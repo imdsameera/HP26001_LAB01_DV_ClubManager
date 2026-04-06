@@ -2,34 +2,32 @@
 
 import { useState } from "react";
 import {
+  QrCode,
+  PlusCircle,
+  Users,
+  UserPlus,
+  Wallet,
   CheckCircle,
   XCircle,
   Clock,
-  Users,
-  ClipboardList,
-  Search,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// Types & seed data
+// Types
 // ---------------------------------------------------------------------------
-type Status = "pending";
-
-interface PendingMember {
+interface PendingRow {
   id: string;
-  name: string;
   initials: string;
-  phone: string;
+  name: string;
   dateApplied: string;
-  status: Status;
 }
 
-const SEED: PendingMember[] = [
-  { id: "1", name: "John D.  Silva",      initials: "JS", phone: "+94 77 123 4567", dateApplied: "2026-04-01", status: "pending" },
-  { id: "2", name: "Nimal S. Perera",     initials: "NP", phone: "+94 71 987 6543", dateApplied: "2026-04-02", status: "pending" },
-  { id: "3", name: "Ayesha R. Fernando",  initials: "AF", phone: "+94 76 555 3210", dateApplied: "2026-04-02", status: "pending" },
-  { id: "4", name: "Kasun M. Bandara",    initials: "KB", phone: "+94 70 444 2200", dateApplied: "2026-04-03", status: "pending" },
-  { id: "5", name: "Dilini P. Jayaratne", initials: "DJ", phone: "+94 78 321 0099", dateApplied: "2026-04-04", status: "pending" },
+// ---------------------------------------------------------------------------
+// Seed data
+// ---------------------------------------------------------------------------
+const PENDING: PendingRow[] = [
+  { id: "1", initials: "RP", name: "Ruwan P. Kumara",    dateApplied: "2026-04-04" },
+  { id: "2", initials: "TJ", name: "Tharushi Jayaratne", dateApplied: "2026-04-05" },
 ];
 
 function formatDate(iso: string) {
@@ -41,31 +39,30 @@ function formatDate(iso: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Avatar initials bubble
+// Stat Card
 // ---------------------------------------------------------------------------
-function InitialsAvatar({ initials }: { initials: string }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  valueColor = "text-slate-800",
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ElementType;
+  valueColor?: string;
+}) {
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-primary-light)] text-xs font-bold text-[var(--color-brand-primary)]">
-      {initials}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
-function EmptyQueue() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success-light)]">
-        <CheckCircle size={28} className="text-[var(--color-success)]" />
+    <div className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-50">
+        <Icon size={20} className={valueColor} />
       </div>
-      <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
-        All caught up!
-      </h3>
-      <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-        There are no pending applications right now.
-      </p>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+          {label}
+        </p>
+        <p className={`mt-0.5 text-2xl font-bold ${valueColor}`}>{value}</p>
+      </div>
     </div>
   );
 }
@@ -73,181 +70,150 @@ function EmptyQueue() {
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
-export default function ApprovalQueuePage() {
-  const [queue, setQueue] = useState<PendingMember[]>(SEED);
-  const [search, setSearch] = useState("");
-  const [toasting, setToasting] = useState<{ id: string; type: "approved" | "rejected" } | null>(null);
+export default function DashboardPage() {
+  const [pending, setPending] = useState<PendingRow[]>(PENDING);
 
-  const filtered = queue.filter((m) =>
-    m.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  function handleAction(id: string, action: "approve" | "reject") {
-    const type = action === "approve" ? "approved" : "rejected";
-    setToasting({ id, type });
-    setTimeout(() => {
-      setQueue((prev) => prev.filter((m) => m.id !== id));
-      setToasting(null);
-    }, 1200);
-  }
+  const removePending = (id: string) =>
+    setPending((prev) => prev.filter((p) => p.id !== id));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+
       {/* ── Page header ───────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <ClipboardList size={20} className="text-[var(--color-brand-primary)]" />
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Approval Queue
-            </h2>
-            {queue.length > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-brand-primary)] px-1.5 text-[11px] font-bold text-white">
-                {queue.length}
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 text-sm text-[var(--color-text-secondary)]">
-            Review and act on new membership applications.
+          <h2 className="text-xl font-bold text-slate-800">Overview</h2>
+          <p className="mt-0.5 text-sm text-gray-400">
+            Welcome back, Admin. Here's what's happening today.
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)]"
-          />
-          <input
-            type="search"
-            placeholder="Search applicants…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full rounded-lg border border-[var(--color-border)] bg-white pl-8 pr-3 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] outline-none transition focus:border-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary-light)] sm:w-56"
-          />
+        {/* Action buttons */}
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 rounded-lg bg-[#0066FF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95">
+            <QrCode size={16} />
+            Scan QR
+          </button>
+          <button className="flex items-center gap-2 rounded-lg bg-[#0066FF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95">
+            <PlusCircle size={16} />
+            Log Transaction
+          </button>
         </div>
       </div>
 
-      {/* ── Stats strip ───────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        {[
-          { label: "Pending",  value: queue.length,  icon: Clock,       color: "var(--color-warning)",        bg: "var(--color-warning-light)"  },
-          { label: "This Week", value: SEED.length,  icon: Users,       color: "var(--color-brand-primary)",  bg: "var(--color-brand-primary-light)" },
-          { label: "Approved", value: SEED.length - queue.length, icon: CheckCircle, color: "var(--color-success)", bg: "var(--color-success-light)" },
-        ].map(({ label, value, icon: Icon, color, bg }) => (
-          <div
-            key={label}
-            className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-white px-5 py-4 shadow-[var(--shadow-sm)]"
-          >
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: bg }}
-            >
-              <Icon size={18} style={{ color }} />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-[var(--color-text-primary)]">{value}</p>
-              <p className="text-xs text-[var(--color-text-secondary)]">{label}</p>
-            </div>
-          </div>
-        ))}
+      {/* ── Stat Cards ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <StatCard
+          label="Total Members"
+          value={15}
+          icon={Users}
+          valueColor="text-slate-800"
+        />
+        <StatCard
+          label="Pending Approvals"
+          value={pending.length}
+          icon={UserPlus}
+          valueColor="text-orange-500"
+        />
+        <StatCard
+          label="Treasury Balance"
+          value="LKR 4,500.00"
+          icon={Wallet}
+          valueColor="text-[#0066FF]"
+        />
       </div>
 
-      {/* ── Table card ────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-white shadow-[var(--shadow-sm)]">
-        {filtered.length === 0 ? (
-          <EmptyQueue />
+      {/* ── Pending Approvals Table ───────────────────────── */}
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        {/* Card header */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-800">
+              Pending Approvals
+            </h3>
+            {pending.length > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-100 px-1.5 text-[11px] font-bold text-orange-500">
+                {pending.length}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {pending.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
+              <CheckCircle size={22} className="text-green-500" />
+            </div>
+            <p className="text-sm font-medium text-slate-700">All cleared!</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              No pending applications right now.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] border-collapse">
+            <table className="w-full min-w-[520px] border-collapse">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-[var(--color-workspace-bg)]">
-                  {["Applicant", "Phone", "Date Applied", "Actions"].map((h) => (
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  {["Applicant", "Date Applied", "Actions"].map((h) => (
                     <th
                       key={h}
-                      className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]"
+                      className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400"
                     >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {filtered.map((member) => {
-                  const isActing = toasting?.id === member.id;
-                  return (
-                    <tr
-                      key={member.id}
-                      className={`transition-colors duration-150 ${
-                        isActing
-                          ? toasting?.type === "approved"
-                            ? "bg-[var(--color-success-light)]"
-                            : "bg-[var(--color-danger-light)]"
-                          : "hover:bg-[var(--color-workspace-bg)]"
-                      }`}
-                    >
-                      {/* Name */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <InitialsAvatar initials={member.initials} />
-                          <div>
-                            <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                              {member.name}
-                            </p>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-warning-light)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-warning)]">
-                              <Clock size={10} />
-                              Pending
-                            </span>
-                          </div>
+              <tbody className="divide-y divide-gray-100">
+                {pending.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="transition-colors hover:bg-gray-50/60"
+                  >
+                    {/* Applicant */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-[#0066FF]">
+                          {row.initials}
                         </div>
-                      </td>
-
-                      {/* Phone */}
-                      <td className="px-5 py-4 text-sm text-[var(--color-text-secondary)]">
-                        {member.phone}
-                      </td>
-
-                      {/* Date */}
-                      <td className="px-5 py-4 text-sm text-[var(--color-text-secondary)]">
-                        {formatDate(member.dateApplied)}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-5 py-4">
-                        {isActing ? (
-                          <span
-                            className={`text-sm font-semibold ${
-                              toasting?.type === "approved"
-                                ? "text-[var(--color-success)]"
-                                : "text-[var(--color-danger)]"
-                            }`}
-                          >
-                            {toasting?.type === "approved" ? "✓ Approved" : "✕ Rejected"}
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">
+                            {row.name}
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-orange-400">
+                            <Clock size={10} />
+                            Pending review
                           </span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleAction(member.id, "approve")}
-                              className="flex items-center gap-1.5 rounded-lg border border-[var(--color-success)] bg-[var(--color-success-light)] px-3 py-1.5 text-xs font-semibold text-[var(--color-success)] transition-all hover:bg-[var(--color-success)] hover:text-white active:scale-95"
-                              aria-label={`Approve ${member.name}`}
-                            >
-                              <CheckCircle size={13} />
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleAction(member.id, "reject")}
-                              className="flex items-center gap-1.5 rounded-lg border border-[var(--color-danger)] bg-[var(--color-danger-light)] px-3 py-1.5 text-xs font-semibold text-[var(--color-danger)] transition-all hover:bg-[var(--color-danger)] hover:text-white active:scale-95"
-                              aria-label={`Reject ${member.name}`}
-                            >
-                              <XCircle size={13} />
-                              Reject
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Date */}
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {formatDate(row.dateApplied)}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => removePending(row.id)}
+                          className="flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-600 transition hover:bg-green-600 hover:text-white active:scale-95"
+                        >
+                          <CheckCircle size={13} />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => removePending(row.id)}
+                          className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white active:scale-95"
+                        >
+                          <XCircle size={13} />
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
