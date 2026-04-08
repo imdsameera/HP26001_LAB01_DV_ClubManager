@@ -30,11 +30,11 @@ interface SidebarProps {
 // Navigation links — exactly as specified
 // ---------------------------------------------------------------------------
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",         href: "/dashboard",            icon: LayoutDashboard   },
-  { label: "Members",           href: "/dashboard/members",    icon: Users             },
-  { label: "Attendance",        href: "/dashboard/attendance", icon: ClipboardCheck    },
-  { label: "Events & Calendar", href: "/dashboard/events",     icon: CalendarDays      },
-  { label: "Finance",           href: "/dashboard/finance",    icon: CircleDollarSign  },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Members", href: "/members", icon: Users },
+  { label: "Attendance", href: "/attendance", icon: ClipboardCheck },
+  { label: "Events & Calendar", href: "/events", icon: CalendarDays },
+  { label: "Finance", href: "/finance", icon: CircleDollarSign },
 ];
 
 // ---------------------------------------------------------------------------
@@ -136,8 +136,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               AD
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">Admin User</p>
-              <p className="truncate text-[11px] text-gray-500">admin@hyke.lk</p>
+              <p className="truncate text-sm font-medium text-white">
+                Admin User
+              </p>
+              <p className="truncate text-[11px] text-gray-500">
+                admin@hyke.lk
+              </p>
             </div>
           </div>
         </div>
