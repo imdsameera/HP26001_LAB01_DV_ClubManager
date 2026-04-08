@@ -6,10 +6,11 @@ import {
   ImagePlus,
   CheckCircle2,
   ShieldCheck,
-  X,
   Trash2
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/ui/PhoneInput";
+import Button from "@/components/ui/Button";
 
 const INITIAL_FORM = {
   initials: "",
@@ -30,14 +31,37 @@ export default function JoinPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  // -- Formatters --
+  const formatInitials = (val: string) => {
+    const letters = val.replace(/[^a-zA-Z]/g, "");
+    if (!letters) return val;
+    return letters.toUpperCase().split("").join(".") + ".";
+  };
+
+  const formatName = (val: string) => {
+    return val
+      .split(" ")
+      .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : "")
+      .join(" ");
+  };
 
   // -- Handlers --
   const handleField = (key: keyof typeof form) => (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  };
+
+  const handleBlur = (key: keyof typeof form) => () => {
+    if (key === "initials" && form.initials) {
+      setForm(prev => ({ ...prev, initials: formatInitials(prev.initials) }));
+    } else if ((key === "firstName" || key === "lastName") && form[key]) {
+      setForm(prev => ({ ...prev, [key]: formatName(String(prev[key])) }));
+    }
   };
 
   const handlePhoneChange = (val: string) => {
@@ -81,30 +105,15 @@ export default function JoinPage() {
     if (file && file.type.startsWith("image/")) applyFile(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     console.log("Submitting:", form, avatarFile);
-    setSubmitted(true);
+    
+    // Simulate network request
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    router.push("/join/pending");
   };
-
-  if (submitted) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-10 text-center shadow-lg border border-gray-100">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-            <CheckCircle2 size={32} className="text-emerald-500" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-800">
-            Application received!
-          </h2>
-          <p className="mt-2 text-sm text-gray-500">
-            Your membership application has been submitted. An admin will review
-            it and get back to you soon.
-          </p>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="flex min-h-screen w-full items-start justify-center bg-gray-50 px-4 py-8 sm:py-12 overflow-x-hidden">
@@ -216,6 +225,8 @@ export default function JoinPage() {
                   placeholder="Initials"
                   value={form.initials}
                   onChange={handleField("initials")}
+                  onBlur={handleBlur("initials")}
+                  required
                   className="w-full sm:w-24 shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
                 <input
@@ -223,6 +234,7 @@ export default function JoinPage() {
                   placeholder="First Name"
                   value={form.firstName}
                   onChange={handleField("firstName")}
+                  onBlur={handleBlur("firstName")}
                   required
                   className="w-full sm:w-1/2 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
@@ -231,6 +243,7 @@ export default function JoinPage() {
                   placeholder="Last Name"
                   value={form.lastName}
                   onChange={handleField("lastName")}
+                  onBlur={handleBlur("lastName")}
                   required
                   className="w-full sm:w-1/2 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
@@ -248,7 +261,6 @@ export default function JoinPage() {
                   placeholder="National Identity Card Number"
                   value={form.nic}
                   onChange={handleField("nic")}
-                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -333,6 +345,7 @@ export default function JoinPage() {
                   placeholder="Residential address"
                   value={form.address}
                   onChange={handleField("address")}
+                  required
                   rows={2}
                   className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
@@ -341,14 +354,17 @@ export default function JoinPage() {
 
             {/* Submit */}
             <div className="mt-2 w-full border-t border-gray-100 pt-6">
-              <button
+              <Button
                 type="submit"
-                className="w-full rounded-lg bg-[#0066FF] px-6 py-3.5 text-sm font-bold text-white shadow-sm shadow-blue-200 transition-all hover:bg-blue-700 hover:shadow-blue-300 active:scale-[0.98] cursor-pointer"
+                variant="primary"
+                size="lg"
+                isLoading={isSubmitting}
+                className="w-full font-bold"
               >
                 Submit Application
-              </button>
+              </Button>
               <p className="mt-3 text-center text-[11px] leading-relaxed text-gray-400 sm:text-xs">
-                By submitting, you agree to our club's membership terms and
+                By submitting, you agree to our club&apos;s membership terms and
                 privacy policy.
               </p>
             </div>
