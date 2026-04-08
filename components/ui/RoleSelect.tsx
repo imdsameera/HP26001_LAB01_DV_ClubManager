@@ -26,7 +26,11 @@ export const ROLE_BADGE: Record<Role, string> = {
   Member: "bg-gray-100 text-gray-500",
 };
 
-export default function RoleSelect({ value, onChange, disabledRoles }: RoleSelectProps) {
+export default function RoleSelect({
+  value,
+  onChange,
+  disabledRoles,
+}: RoleSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +73,7 @@ export default function RoleSelect({ value, onChange, disabledRoles }: RoleSelec
             {ROLES.map((role) => {
               const selected = role === value;
               const disabled = disabledRoles.includes(role);
-              
+
               return (
                 <button
                   key={role}
@@ -81,8 +85,8 @@ export default function RoleSelect({ value, onChange, disabledRoles }: RoleSelec
                   }}
                   className={`relative flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors outline-none
                     ${
-                      disabled 
-                        ? "opacity-50 cursor-not-allowed" 
+                      disabled
+                        ? "opacity-50 cursor-not-allowed"
                         : "hover:bg-gray-50 focus-visible:bg-gray-50 cursor-pointer"
                     }
                   `}
@@ -92,9 +96,11 @@ export default function RoleSelect({ value, onChange, disabledRoles }: RoleSelec
                   >
                     {role}
                   </span>
-                  
+
                   {disabled && !selected && (
-                    <span className="text-[10px] font-medium text-gray-400">Assigned</span>
+                    <span className="text-[10px] font-medium text-gray-400">
+                      Assigned
+                    </span>
                   )}
                   {selected && (
                     <span className="flex items-center text-gray-600 pr-1">

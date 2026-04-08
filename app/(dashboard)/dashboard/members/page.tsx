@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import MemberFormModal from "@/components/ui/MemberFormModal";
-import {
-  UserPlus,
-  MessageCircle,
-  ChevronRight,
-} from "lucide-react";
+import { UserPlus, MessageCircle, ChevronRight } from "lucide-react";
 import MemberDetailPanel, {
   type Member,
   type Role,
@@ -359,7 +355,7 @@ export default function MembersPage() {
                             {/* ── Role badge ───────────────────── */}
                             <td className="px-5 py-3.5">
                               <span
-                                className={`inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-semibold ${ROLE_BADGE[m.role]}`}
+                                className={`inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase ${ROLE_BADGE[m.role]}`}
                               >
                                 {m.role}
                               </span>
