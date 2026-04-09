@@ -54,9 +54,11 @@ export default function MemberFormModal({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [userRemovedAvatar, setUserRemovedAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditMode = !!initialData;
 
+  /* eslint-disable react-hooks/set-state-in-effect -- initialize form when modal opens */
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
@@ -107,8 +109,10 @@ export default function MemberFormModal({
         setSameAsPhone(false);
       }
       setAvatarFile(null);
+      setUserRemovedAvatar(false);
     }
   }, [isOpen, initialData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handlePhoneChange = (val: string) => {
     setForm((prev) => {
@@ -138,6 +142,7 @@ export default function MemberFormModal({
 
   const applyFile = useCallback((file: File) => {
     setAvatarFile(file);
+    setUserRemovedAvatar(false);
     const reader = new FileReader();
     reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -146,6 +151,7 @@ export default function MemberFormModal({
   const clearAvatar = () => {
     setAvatarFile(null);
     setAvatarPreview(null);
+    if (initialData?.avatarUrl) setUserRemovedAvatar(true);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -170,7 +176,7 @@ export default function MemberFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...form, avatarFile });
+    onSave({ ...form, avatarFile, clearExistingAvatar: userRemovedAvatar });
     handleClose();
   };
 

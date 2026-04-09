@@ -108,11 +108,33 @@ export default function JoinPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    console.log("Submitting:", form, avatarFile);
-    
-    // Simulate network request
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    router.push("/join/pending");
+    try {
+      const fd = new FormData();
+      fd.append("initials", form.initials);
+      fd.append("firstName", form.firstName);
+      fd.append("lastName", form.lastName);
+      fd.append("nic", form.nic);
+      fd.append("email", form.email);
+      fd.append("phoneCode", form.phoneCode);
+      fd.append("phone", form.phone);
+      fd.append("whatsappCode", form.whatsappCode);
+      fd.append("whatsapp", form.whatsapp);
+      fd.append("address", form.address);
+      if (avatarFile) fd.append("avatar", avatarFile);
+
+      const res = await fetch("/api/members/join", {
+        method: "POST",
+        body: fd,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(typeof body.error === "string" ? body.error : "Could not submit application.");
+        return;
+      }
+      router.push("/join/pending");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

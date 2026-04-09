@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   QrCode,
   PlusCircle,
@@ -19,15 +19,46 @@ interface PendingRow {
   dateApplied: string;
 }
 
-const PENDING: PendingRow[] = [
-  { id: "1", initials: "RP", name: "Ruwan P. Kumara",    dateApplied: "2026-04-04" },
-  { id: "2", initials: "TJ", name: "Tharushi Jayaratne", dateApplied: "2026-04-05" },
-];
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
+}
+
+async function fetchDashboardPatch(): Promise<{
+  totalMembers?: number;
+  pending?: PendingRow[];
+}> {
+  try {
+    const [statsRes, pendingRes] = await Promise.all([
+      fetch("/api/dashboard/stats"),
+      fetch("/api/members?status=pending"),
+    ]);
+    const stats: unknown = await statsRes.json();
+    const pendingJson: unknown = await pendingRes.json();
+    const patch: { totalMembers?: number; pending?: PendingRow[] } = {};
+    if (
+      statsRes.ok &&
+      typeof stats === "object" &&
+      stats !== null &&
+      "totalMembers" in stats &&
+      typeof (stats as { totalMembers: unknown }).totalMembers === "number"
+    ) {
+      patch.totalMembers = (stats as { totalMembers: number }).totalMembers;
+    }
+    if (
+      pendingRes.ok &&
+      typeof pendingJson === "object" &&
+      pendingJson !== null &&
+      "pending" in pendingJson &&
+      Array.isArray((pendingJson as { pending: unknown }).pending)
+    ) {
+      patch.pending = (pendingJson as { pending: PendingRow[] }).pending;
+    }
+    return patch;
+  } catch {
+    return {};
+  }
 }
 
 function StatCard({
@@ -49,8 +80,37 @@ function StatCard({
 }
 
 export default function DashboardPage() {
-  const [pending, setPending] = useState<PendingRow[]>(PENDING);
-  const removePending = (id: string) => setPending((prev) => prev.filter((p) => p.id !== id));
+  const [pending, setPending] = useState<PendingRow[]>([]);
+  const [totalMembers, setTotalMembers] = useState(0);
+
+  const refreshDashboard = useCallback(async () => {
+    const patch = await fetchDashboardPatch();
+    if (patch.totalMembers !== undefined) setTotalMembers(patch.totalMembers);
+    if (patch.pending !== undefined) setPending(patch.pending);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const patch = await fetchDashboardPatch();
+      if (cancelled) return;
+      if (patch.totalMembers !== undefined) setTotalMembers(patch.totalMembers);
+      if (patch.pending !== undefined) setPending(patch.pending);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleApprove = async (id: string) => {
+    const res = await fetch(`/api/members/${id}/approve`, { method: "POST" });
+    if (res.ok) await refreshDashboard();
+  };
+
+  const handleReject = async (id: string) => {
+    const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
+    if (res.ok) await refreshDashboard();
+  };
 
   return (
     <div className="space-y-8">
@@ -58,7 +118,7 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-800">Overview</h2>
-          <p className="mt-0.5 text-sm text-gray-400">Welcome back, Admin. Here's what's happening today.</p>
+          <p className="mt-0.5 text-sm text-gray-400">Welcome back, Admin. Here&apos;s what&apos;s happening today.</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 rounded-lg bg-[#0066FF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95">
@@ -72,7 +132,7 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <StatCard label="Total Members"      value={15}             icon={Users}    valueColor="text-slate-800"  />
+        <StatCard label="Total Members"      value={totalMembers}   icon={Users}    valueColor="text-slate-800"  />
         <StatCard label="Pending Approvals"  value={pending.length} icon={UserPlus} valueColor="text-orange-500" />
         <StatCard label="Treasury Balance"   value="LKR 4,500.00"   icon={Wallet}   valueColor="text-[#0066FF]"  />
       </div>
@@ -125,10 +185,10 @@ export default function DashboardPage() {
                     <td className="px-6 py-4 text-sm text-gray-400">{formatDate(row.dateApplied)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => removePending(row.id)} className="flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-600 transition hover:bg-green-600 hover:text-white active:scale-95">
+                        <button type="button" onClick={() => void handleApprove(row.id)} className="flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-600 transition hover:bg-green-600 hover:text-white active:scale-95">
                           <CheckCircle size={13} /> Approve
                         </button>
-                        <button onClick={() => removePending(row.id)} className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white active:scale-95">
+                        <button type="button" onClick={() => void handleReject(row.id)} className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white active:scale-95">
                           <XCircle size={13} /> Reject
                         </button>
                       </div>
