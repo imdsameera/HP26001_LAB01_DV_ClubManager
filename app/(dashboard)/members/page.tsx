@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import MemberFormModal from "@/components/ui/MemberFormModal";
 import { UserPlus, MessageCircle, ChevronRight } from "lucide-react";
 import MemberDetailPanel, {
@@ -22,199 +22,87 @@ const ROLE_BADGE: Record<Role, string> = {
   Member: "bg-gray-100   text-gray-500",
 };
 
-// ---------------------------------------------------------------------------
-// Seed Data
-// ---------------------------------------------------------------------------
-const SEED: Member[] = [
-  {
-    id: "1",
-    memberId: "HYKE-001",
-    name: "S. Lakshan",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=400&h=400",
-    nic: "199823456780",
-    address: "14, Divithotawela, Welimada",
-    phone: "077 123 4567",
-    whatsapp: "077 123 4567",
-    email: "s.lakshan@hyke.lk",
-    role: "President",
-    paletteIdx: 0,
-    joinDate: "2023-01-15",
-    financials: {
-      totalPaidYtd: 15000,
-      outstanding: 0,
-      contributions: [
-        { month: "Oct", amount: 2500, target: 2500 },
-        { month: "Nov", amount: 2500, target: 2500 },
-        { month: "Dec", amount: 2500, target: 2500 },
-        { month: "Jan", amount: 2500, target: 2500 },
-        { month: "Feb", amount: 2500, target: 2500 },
-        { month: "Mar", amount: 2500, target: 2500 },
-      ],
-      transactions: [
-        { id: "TRX-1092", date: "Mar 15, 2026", amount: 2500, status: "Paid" },
-        { id: "TRX-0945", date: "Feb 15, 2026", amount: 2500, status: "Paid" },
-        { id: "TRX-0821", date: "Jan 15, 2026", amount: 2500, status: "Paid" },
-      ],
-    },
-  },
-  {
-    id: "2",
-    memberId: "HYKE-002",
-    name: "P. Malinda",
-    nic: "200156789012",
-    address: "No. 5, Divithotawela, Welimada",
-    phone: "076 555 3210",
-    whatsapp: "076 555 3210",
-    email: "p.malinda@hyke.lk",
-    role: "Secretary",
-    paletteIdx: 1,
-    joinDate: "2023-03-22",
-    financials: {
-      totalPaidYtd: 10000,
-      outstanding: 5000,
-      contributions: [
-        { month: "Oct", amount: 2500, target: 2500 },
-        { month: "Nov", amount: 2500, target: 2500 },
-        { month: "Dec", amount: 2500, target: 2500 },
-        { month: "Jan", amount: 0, target: 2500 },
-        { month: "Feb", amount: 0, target: 2500 },
-        { month: "Mar", amount: 2500, target: 2500 },
-      ],
-      transactions: [
-        { id: "TRX-1105", date: "Mar 20, 2026", amount: 2500, status: "Paid" },
-        {
-          id: "TRX-0988",
-          date: "Feb 20, 2026",
-          amount: 2500,
-          status: "Failed",
-        },
-        {
-          id: "TRX-0850",
-          date: "Jan 20, 2026",
-          amount: 2500,
-          status: "Failed",
-        },
-      ],
-    },
-  },
-  {
-    id: "3",
-    memberId: "HYKE-003",
-    name: "A. Chanaka",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=400",
-    nic: "199034567891",
-    address: "22/B, Peradeniya Road, Kandy",
-    phone: "070 444 2200",
-    whatsapp: "",
-    email: "k.bandara@gmail.com",
-    role: "Treasurer",
-    paletteIdx: 2,
-    joinDate: "2023-05-10",
-    financials: {
-      totalPaidYtd: 12500,
-      outstanding: 2500,
-      contributions: [
-        { month: "Oct", amount: 2500, target: 2500 },
-        { month: "Nov", amount: 2500, target: 2500 },
-        { month: "Dec", amount: 2500, target: 2500 },
-        { month: "Jan", amount: 2500, target: 2500 },
-        { month: "Feb", amount: 0, target: 2500 },
-        { month: "Mar", amount: 2500, target: 2500 },
-      ],
-      transactions: [
-        { id: "TRX-1088", date: "Mar 10, 2026", amount: 2500, status: "Paid" },
-        {
-          id: "TRX-0932",
-          date: "Feb 10, 2026",
-          amount: 2500,
-          status: "Pending",
-        },
-        { id: "TRX-0811", date: "Jan 10, 2026", amount: 2500, status: "Paid" },
-      ],
-    },
-  },
-  {
-    id: "4",
-    memberId: "HYKE-004",
-    name: "K. Dilshan",
-    nic: "199823410099",
-    address: "7, Marine Drive, Negombo",
-    phone: "078 321 0099",
-    whatsapp: "078 321 0099",
-    email: "d.jayaratne@hyke.lk",
-    role: "Vice President",
-    paletteIdx: 3,
-    joinDate: "2023-07-01",
-    financials: {
-      totalPaidYtd: 7500,
-      outstanding: 7500,
-      contributions: [
-        { month: "Oct", amount: 2500, target: 2500 },
-        { month: "Nov", amount: 2500, target: 2500 },
-        { month: "Dec", amount: 0, target: 2500 },
-        { month: "Jan", amount: 2500, target: 2500 },
-        { month: "Feb", amount: 0, target: 2500 },
-        { month: "Mar", amount: 0, target: 2500 },
-      ],
-      transactions: [
-        {
-          id: "TRX-1120",
-          date: "Mar 05, 2026",
-          amount: 2500,
-          status: "Failed",
-        },
-        {
-          id: "TRX-0960",
-          date: "Feb 05, 2026",
-          amount: 2500,
-          status: "Pending",
-        },
-        { id: "TRX-0805", date: "Jan 05, 2026", amount: 2500, status: "Paid" },
-      ],
-    },
-  },
-  {
-    id: "5",
-    memberId: "HYKE-005",
-    name: "K.M. Sanjitha",
-    nic: "199145678901",
-    address: "33, High Level Road, Maharagama",
-    phone: "077 666 1122",
-    whatsapp: "077 666 1122",
-    email: "s.wickrama@outlook.com",
-    role: "Member",
-    paletteIdx: 4,
-    joinDate: "2023-11-12",
-    financials: {
-      totalPaidYtd: 15000,
-      outstanding: 0,
-      contributions: [
-        { month: "Oct", amount: 2500, target: 2500 },
-        { month: "Nov", amount: 2500, target: 2500 },
-        { month: "Dec", amount: 2500, target: 2500 },
-        { month: "Jan", amount: 2500, target: 2500 },
-        { month: "Feb", amount: 2500, target: 2500 },
-        { month: "Mar", amount: 2500, target: 2500 },
-      ],
-      transactions: [
-        { id: "TRX-1099", date: "Mar 12, 2026", amount: 2500, status: "Paid" },
-        { id: "TRX-0951", date: "Feb 12, 2026", amount: 2500, status: "Paid" },
-        { id: "TRX-0818", date: "Jan 12, 2026", amount: 2500, status: "Paid" },
-      ],
-    },
-  },
-];
+type MemberFormSavePayload = {
+  initials: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  nic: string;
+  email: string;
+  phoneCode: string;
+  phone: string;
+  whatsappCode: string;
+  whatsapp: string;
+  address: string;
+  avatarFile: File | null;
+  clearExistingAvatar?: boolean;
+};
+
+async function fetchActiveMembers(): Promise<Member[] | null> {
+  try {
+    const res = await fetch("/api/members");
+    const j: unknown = await res.json();
+    if (!res.ok || typeof j !== "object" || j === null || !("members" in j)) return null;
+    const raw = (j as { members: unknown }).members;
+    if (!Array.isArray(raw)) return null;
+    return raw as Member[];
+  } catch {
+    return null;
+  }
+}
+
+function buildMemberFormData(d: MemberFormSavePayload): FormData {
+  const fd = new FormData();
+  fd.append("initials", d.initials);
+  fd.append("firstName", d.firstName);
+  fd.append("lastName", d.lastName);
+  fd.append("role", d.role);
+  fd.append("nic", d.nic);
+  fd.append("email", d.email);
+  fd.append("phoneCode", d.phoneCode);
+  fd.append("phone", d.phone);
+  fd.append("whatsappCode", d.whatsappCode);
+  fd.append("whatsapp", d.whatsapp);
+  fd.append("address", d.address);
+  if (d.avatarFile) fd.append("avatar", d.avatarFile);
+  if (d.clearExistingAvatar) fd.append("clearAvatar", "1");
+  return fd;
+}
 
 // ---------------------------------------------------------------------------
 // Page Component (Split View)
 // ---------------------------------------------------------------------------
 export default function MembersPage() {
-  const [members, setMembers] = useState<Member[]>(SEED);
+  const [members, setMembers] = useState<Member[]>([]);
   const [selected, setSelected] = useState<Member | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+
+  const loadMembers = useCallback(async () => {
+    const list = await fetchActiveMembers();
+    if (list === null) return;
+    setMembers(list);
+    setSelected((prev) => {
+      if (!prev) return null;
+      return list.find((m) => m.id === prev.id) ?? null;
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await fetchActiveMembers();
+      if (cancelled || list === null) return;
+      setMembers(list);
+      setSelected((prev) => {
+        if (!prev) return null;
+        return list.find((m) => m.id === prev.id) ?? null;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     // Height minus TopNav (65px) so the panel stretches exactly screen height without creating a nested scrollbar
@@ -406,8 +294,14 @@ export default function MembersPage() {
         <MemberDetailPanel
           member={selected}
           onClose={() => setSelected(null)}
-          onRemove={(id) => {
-            setMembers((prev) => prev.filter((m) => m.id !== id));
+          onRemove={async (id) => {
+            const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
+            if (!res.ok) {
+              const j = await res.json().catch(() => ({}));
+              window.alert(typeof j === "object" && j && "error" in j && typeof (j as { error: string }).error === "string" ? (j as { error: string }).error : "Could not remove member.");
+              return;
+            }
+            await loadMembers();
             setSelected(null);
           }}
           onEdit={() => {
@@ -425,8 +319,19 @@ export default function MembersPage() {
           setEditingMember(null);
         }}
         initialData={editingMember}
-        onSave={(data) => {
-          console.log("Member data saved:", data);
+        onSave={async (data) => {
+          const d = data as MemberFormSavePayload;
+          const fd = buildMemberFormData(d);
+          const editing = editingMember;
+          const url = editing ? `/api/members/${editing.id}` : "/api/members";
+          const method = editing ? "PATCH" : "POST";
+          const res = await fetch(url, { method, body: fd });
+          if (!res.ok) {
+            const j = await res.json().catch(() => ({}));
+            window.alert(typeof j === "object" && j && "error" in j && typeof (j as { error: string }).error === "string" ? (j as { error: string }).error : "Could not save member.");
+            return;
+          }
+          await loadMembers();
         }}
       />
     </div>
