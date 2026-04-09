@@ -15,7 +15,7 @@ import {
   CalendarRange 
 } from "lucide-react";
 import Button from "@/components/ui/Button";
-import TransactionDrawer from "@/components/ui/TransactionDrawer";
+import TransactionModal from "@/components/ui/TransactionModal";
 
 // --- Types & Categories ---
 type TransactionType = "income" | "expense";
@@ -242,8 +242,8 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Slide-over Modal */}
-      <TransactionDrawer 
+      {/* Modal */}
+      <TransactionModal 
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
       />
