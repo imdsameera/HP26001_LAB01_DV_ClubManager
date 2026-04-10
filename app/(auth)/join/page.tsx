@@ -262,11 +262,10 @@ export default function JoinPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Last Name"
+                  placeholder="Last Name (Optional)"
                   value={form.lastName}
                   onChange={handleField("lastName")}
                   onBlur={handleBlur("lastName")}
-                  required
                   className="w-full sm:w-1/2 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -275,7 +274,7 @@ export default function JoinPage() {
             {/* NIC */}
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
               <label className="w-full sm:w-36 shrink-0 text-sm font-medium text-slate-700">
-                NIC
+                NIC <span className="text-gray-400 font-normal text-xs">(optional)</span>
               </label>
               <div className="flex w-full flex-1 min-w-0">
                 <input
@@ -299,6 +298,7 @@ export default function JoinPage() {
                   placeholder="member@example.com"
                   value={form.email}
                   onChange={handleField("email")}
+                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>

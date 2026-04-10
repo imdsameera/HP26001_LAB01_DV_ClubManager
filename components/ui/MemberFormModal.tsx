@@ -215,6 +215,7 @@ export default function MemberFormModal({
                   placeholder="Initials"
                   value={form.initials}
                   onChange={handleField("initials")}
+                  required
                   className="w-24 shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
                 <input
@@ -227,10 +228,9 @@ export default function MemberFormModal({
                 />
                 <input
                   type="text"
-                  placeholder="Last Name"
+                  placeholder="Last Name (Optional)"
                   value={form.lastName}
                   onChange={handleField("lastName")}
-                  required
                   className="w-1/2 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -255,7 +255,7 @@ export default function MemberFormModal({
             {/* NIC */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <label className="w-36 shrink-0 text-sm font-medium text-slate-700">
-                NIC
+                NIC <span className="text-gray-400 font-normal text-xs">(optional)</span>
               </label>
               <div className="flex-1">
                 <input
@@ -263,7 +263,6 @@ export default function MemberFormModal({
                   placeholder="National Identity Card Number"
                   value={form.nic}
                   onChange={handleField("nic")}
-                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -280,6 +279,7 @@ export default function MemberFormModal({
                   placeholder="member@example.com"
                   value={form.email}
                   onChange={handleField("email")}
+                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -348,6 +348,7 @@ export default function MemberFormModal({
                   placeholder="Residential address"
                   value={form.address}
                   onChange={handleField("address")}
+                  required
                   rows={2}
                   className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
