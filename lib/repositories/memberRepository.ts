@@ -151,7 +151,7 @@ export async function insertActiveMember(
   return insertedId;
 }
 
-export async function approvePendingMember(id: string): Promise<MemberDocument | null> {
+export async function approvePendingMember(id: string, role?: MemberRole): Promise<MemberDocument | null> {
   if (!ObjectId.isValid(id)) return null;
   const coll = await getColl();
   const oid = new ObjectId(id);
@@ -166,7 +166,7 @@ export async function approvePendingMember(id: string): Promise<MemberDocument |
     $set: {
       status: "active" as MemberStatus,
       memberId,
-      role: (pending.role ?? "Member") as MemberRole,
+      role: role ?? (pending.role ?? "Member") as MemberRole,
       joinDate,
       updatedAt: now,
     },
@@ -176,4 +176,11 @@ export async function approvePendingMember(id: string): Promise<MemberDocument |
     returnDocument: "after",
   });
   return out;
+}
+
+export async function getAssignedRoles(): Promise<MemberRole[]> {
+  const coll = await getColl();
+  // Find distinct roles from active members, filter out 'Member'
+  const roles = await coll.distinct("role", { status: "active" }) as MemberRole[];
+  return roles.filter(r => r && r !== "Member");
 }
