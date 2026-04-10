@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   CalendarDays,
   CircleDollarSign,
+  Settings,
   X,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -30,11 +31,12 @@ interface SidebarProps {
 // Navigation links — exactly as specified
 // ---------------------------------------------------------------------------
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Members", href: "/members", icon: Users },
-  { label: "Attendance", href: "/attendance", icon: ClipboardCheck },
-  { label: "Events & Calendar", href: "/events", icon: CalendarDays },
-  { label: "Finance", href: "/finance", icon: CircleDollarSign },
+  { label: "Dashboard",       href: "/dashboard",  icon: LayoutDashboard },
+  { label: "Members",         href: "/members",    icon: Users },
+  { label: "Attendance",      href: "/attendance", icon: ClipboardCheck },
+  { label: "Events & Calendar", href: "/events",  icon: CalendarDays },
+  { label: "Finance",         href: "/finance",   icon: CircleDollarSign },
+  { label: "Settings",        href: "/settings",  icon: Settings },
 ];
 
 // ---------------------------------------------------------------------------
