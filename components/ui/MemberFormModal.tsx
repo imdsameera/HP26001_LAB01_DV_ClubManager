@@ -21,13 +21,7 @@ interface MemberFormModalProps {
   initialData?: Member | null;
 }
 
-// In a real app we'd fetch this. We'll disable these since they're already assigned.
-const ASSIGNED_ROLES: Role[] = [
-  "President",
-  "Vice President",
-  "Secretary",
-  "Treasurer",
-];
+// Assigned roles will be fetched dynamically
 
 const INITIAL_FORM = {
   initials: "",
@@ -55,8 +49,27 @@ export default function MemberFormModal({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [userRemovedAvatar, setUserRemovedAvatar] = useState(false);
+  const [assignedRoles, setAssignedRoles] = useState<Role[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditMode = !!initialData;
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch("/api/members/roles")
+        .then(r => r.json())
+        .then(d => {
+          // Exclude the current member's role from disabled roles so they can keep it
+          if (d.roles) {
+             let rolesToDisable = d.roles;
+             if (initialData?.role) {
+                 rolesToDisable = rolesToDisable.filter((r: string) => r !== initialData.role);
+             }
+             setAssignedRoles(rolesToDisable);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isOpen, initialData]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- initialize form when modal opens */
   useEffect(() => {
@@ -232,7 +245,7 @@ export default function MemberFormModal({
                 <RoleSelect
                   value={form.role}
                   onChange={(r) => setForm((prev) => ({ ...prev, role: r }))}
-                  disabledRoles={ASSIGNED_ROLES}
+                  disabledRoles={assignedRoles}
                 />
               </div>
             </div>
