@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
-import { approveMember } from "@/lib/services/memberService";
-import { getSettings } from "@/lib/services/settingsService";
-import { sendWelcomeEmail } from "@/lib/utils/mailer";
-import { findMemberById } from "@/lib/repositories/memberRepository";
+import { NextResponse }                 from "next/server";
+import { approveMember }               from "@/lib/services/memberService";
+import { getSettings }                 from "@/lib/services/settingsService";
+import { findMemberById }              from "@/lib/repositories/memberRepository";
+import { createMemberUser, generateTempPassword } from "@/lib/services/userService";
+import { sendEmail }                   from "@/lib/utils/mailer";
+import { welcomeWithCredentials }      from "@/emails";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -10,7 +12,7 @@ export async function POST(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    let role;
+    let role: string | undefined;
     try {
       const body = await _request.json();
       role = body?.role;
@@ -18,39 +20,60 @@ export async function POST(_request: Request, context: RouteContext) {
       // Ignored: empty or invalid JSON body
     }
 
+    // ── 1. Approve the member in the members collection ──────────────────────
     const result = await approveMember(id, role);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 404 });
     }
 
-    // Send welcome email — errors are logged but never fail the approval
+    // ── 2. Auto-create member login account + send credentials email ─────────
     try {
       const [doc, settings] = await Promise.all([
         findMemberById(id),
         getSettings(),
       ]);
 
-      // Respect the "New Member Alerts" toggle
+      if (!doc) {
+        console.warn("[approve] Could not find member doc after approval.");
+        return NextResponse.json({ ok: true });
+      }
+
+      if (!doc.email) {
+        console.warn(`[approve] Member ${id} has no email — skipping account creation.`);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Generate temp password and create portal account
+      const tempPassword = generateTempPassword();
+      await createMemberUser(
+        doc.email,
+        `${doc.firstName} ${doc.lastName}`.trim(),
+        doc.memberId ?? id,
+        id,
+        tempPassword,
+      );
+      console.info(`[approve] Portal account created for ${doc.email}`);
+
+      // Send credentials email if alerts are on
       if (!settings.newMemberAlerts) {
         console.info("[approve] newMemberAlerts is OFF — skipping welcome email.");
-      } else if (!doc) {
-        console.warn("[approve] Could not find member doc after approval — skipping email.");
-      } else if (!doc.email) {
-        console.warn(`[approve] Member ${id} has no email address — skipping email.`);
-      } else if (!settings.senderEmail) {
-        console.warn("[approve] No sender email configured in Settings — skipping email.");
       } else {
-        await sendWelcomeEmail(settings, {
-          firstName: doc.firstName,
-          lastName:  doc.lastName,
-          email:     doc.email,
-          memberId:  doc.memberId ?? id,
-          joinDate:  doc.joinDate ?? new Date().toISOString().slice(0, 10),
+        const loginUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/login`;
+        const template = welcomeWithCredentials({
+          firstName:  doc.firstName,
+          lastName:   doc.lastName,
+          memberId:   doc.memberId ?? id,
+          email:      doc.email,
+          password:   tempPassword,
+          loginUrl,
+          clubName:   settings.clubName || "Hyke Youth Club",
         });
+        await sendEmail({ to: doc.email, ...template });
+        console.info(`[approve] Welcome + credentials email sent to ${doc.email}`);
       }
     } catch (emailErr) {
-      // Log the real error so it's visible in the dev server terminal
-      console.error("[approve] Welcome email error:", emailErr);
+      console.error("[approve] Error during account creation / email:", emailErr);
+      // Don't fail the approval — the member was approved, account/email is best-effort
     }
 
     return NextResponse.json({ ok: true });

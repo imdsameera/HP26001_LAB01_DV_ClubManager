@@ -15,7 +15,6 @@ import {
   X,
   Trash2,
   UserCircle2,
-  Send,
   CheckCircle2,
 } from "lucide-react";
 import type { ClubSettings } from "@/lib/services/settingsService";
@@ -49,11 +48,6 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const MOCK_ADMINS = [
-  { id: "1", name: "Sameera Dissanayake", email: "sameera@hyke.lk", role: "Super Admin", avatar: "SD" },
-  { id: "2", name: "Nimal Jayasuriya",    email: "nimal@hyke.lk",   role: "Admin",       avatar: "NJ" },
-  { id: "3", name: "Kasun Perera",        email: "kasun@hyke.lk",   role: "Moderator",   avatar: "KP" },
-];
 
 const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   general:       { title: "General Profile",  subtitle: "Manage your club's public identity and contact information." },
@@ -174,58 +168,204 @@ function GeneralProfileTab({ onChange }: { onChange: () => void }) {
 
 // ─── Admin Access tab ─────────────────────────────────────────────────────────
 
+interface AdminUser {
+  id:        string;
+  email:     string;
+  name:      string;
+  role:      string;
+  isActive:  boolean;
+  createdAt: string;
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  SUPER_ADMIN: "bg-purple-50 text-purple-700",
+  SECRETARY:   "bg-blue-50 text-[#0066FF]",
+  TREASURER:   "bg-emerald-50 text-emerald-700",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Super Admin",
+  SECRETARY:   "Secretary",
+  TREASURER:   "Treasurer",
+};
+
 function AdminAccessTab({ onChange }: { onChange: () => void }) {
-  const [admins, setAdmins] = useState(MOCK_ADMINS);
-  const revoke = (id: string) => { setAdmins(p => p.filter(a => a.id !== id)); onChange(); };
+  const [admins,    setAdmins]    = useState<AdminUser[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [showForm,  setShowForm]  = useState(false);
+  const [form,      setForm]      = useState({ name: "", email: "", role: "SECRETARY", password: "" });
+  const [saving,    setSaving]    = useState(false);
+  const [formError, setFormError] = useState("");
+  const [revoking,  setRevoking]  = useState<string | null>(null);
+
+  const fetchAdmins = useCallback(async () => {
+    try {
+      const res  = await fetch("/api/admin/users");
+      const data = await res.json() as { users?: AdminUser[] };
+      setAdmins(data.users ?? []);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { void fetchAdmins(); }, [fetchAdmins]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true); setFormError("");
+    try {
+      const res  = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Failed to create user.");
+      setShowForm(false);
+      setForm({ name: "", email: "", role: "SECRETARY", password: "" });
+      await fetchAdmins();
+      onChange();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Server error");
+    } finally { setSaving(false); }
+  };
+
+  const handleRevoke = async (id: string) => {
+    if (!confirm("Revoke this admin's access? They will no longer be able to sign in.")) return;
+    setRevoking(id);
+    try {
+      await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
+      setAdmins(prev => prev.filter(a => a.id !== id));
+      onChange();
+    } catch { /* silent */ }
+    finally { setRevoking(null); }
+  };
+
   return (
     <div className="space-y-6">
       <WarningBanner message="Changes to admin access take effect immediately. Revoking access will sign the user out of all dashboard sessions." />
+
       <Card title="Admin Users" description="Manage who has administrative access to this dashboard.">
-        <div className="overflow-hidden rounded-lg border border-gray-100">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                {["User", "Role", "Status", ""].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {admins.map(admin => (
-                <tr key={admin.id} className="group transition-colors hover:bg-blue-50/30">
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-[#0066FF]">{admin.avatar}</div>
-                      <div>
-                        <p className="font-medium text-slate-800">{admin.name}</p>
-                        <p className="text-[11px] text-gray-400">{admin.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-[#0066FF]">{admin.role}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Active
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    {admin.role !== "Super Admin" && (
-                      <button type="button" onClick={() => revoke(admin.id)}
-                        className="invisible flex items-center gap-1 rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-500 transition hover:bg-red-50 group-hover:visible">
-                        <Trash2 size={12} /> Revoke
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <button type="button" className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-gray-50 active:scale-95" onClick={onChange}>
-          <UserCircle2 size={15} /> Invite Admin
-        </button>
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-[#0066FF]" />
+          </div>
+        ) : (
+          <>
+            <div className="overflow-hidden rounded-lg border border-gray-100">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    {["User", "Role", "Status", ""].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {admins.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400">
+                        No admin users found.
+                      </td>
+                    </tr>
+                  )}
+                  {admins.map(admin => {
+                    const initials = admin.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+                    return (
+                      <tr key={admin.id} className="group transition-colors hover:bg-blue-50/30">
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-[#0066FF]">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-800">{admin.name}</p>
+                              <p className="text-[11px] text-gray-400">{admin.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[admin.role] ?? "bg-gray-50 text-gray-600"}`}>
+                            {ROLE_LABELS[admin.role] ?? admin.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Active
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          {admin.role !== "SUPER_ADMIN" && (
+                            <button
+                              type="button"
+                              onClick={() => void handleRevoke(admin.id)}
+                              disabled={revoking === admin.id}
+                              className="invisible flex items-center gap-1 rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-500 transition hover:bg-red-50 group-hover:visible disabled:opacity-50"
+                            >
+                              {revoking === admin.id
+                                ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-200 border-t-red-500" />
+                                : <Trash2 size={12} />
+                              }
+                              Revoke
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add admin form */}
+            {showForm ? (
+              <form onSubmit={e => void handleAdd(e)} className="mt-4 space-y-3 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+                <p className="text-sm font-semibold text-slate-800">Add Admin User</p>
+                {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{formError}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Full Name</label>
+                    <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                      className={INPUT_CLS} placeholder="Jane Smith" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Email</label>
+                    <input required type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                      className={INPUT_CLS} placeholder="jane@hyke.lk" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Role</label>
+                    <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} className={INPUT_CLS}>
+                      <option value="SECRETARY">Secretary</option>
+                      <option value="TREASURER">Treasurer</option>
+                      <option value="SUPER_ADMIN">Super Admin</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Password</label>
+                    <input required type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                      className={INPUT_CLS} placeholder="Min 8 characters" />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={() => { setShowForm(false); setFormError(""); }}
+                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={saving}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#0066FF] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+                    {saving ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : <UserCircle2 size={14} />}
+                    {saving ? "Creating…" : "Create Admin"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" onClick={() => setShowForm(true)}
+                className="mt-4 flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-gray-50 active:scale-95">
+                <UserCircle2 size={15} /> Add Admin User
+              </button>
+            )}
+          </>
+        )}
       </Card>
     </div>
   );

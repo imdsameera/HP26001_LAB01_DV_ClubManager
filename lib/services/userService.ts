@@ -1,0 +1,99 @@
+import "server-only";
+
+import bcrypt from "bcryptjs";
+import {
+  findUserByEmail,
+  findUserById,
+  createUser,
+  updateUserPassword,
+  listAdminUsers,
+  deleteUserById,
+  emailExists,
+} from "@/lib/repositories/userRepository";
+import type { UserRole } from "@/lib/models/user";
+
+const SALT_ROUNDS = 12;
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+export async function authenticateUser(
+  email: string,
+  password: string,
+): Promise<{ id: string; email: string; name: string; role: UserRole; memberId?: string } | null> {
+  const user = await findUserByEmail(email);
+  if (!user || !user.isActive) return null;
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) return null;
+  return {
+    id:       user._id.toString(),
+    email:    user.email,
+    name:     user.name,
+    role:     user.role,
+    memberId: user.memberId,
+  };
+}
+
+// ─── User creation ────────────────────────────────────────────────────────────
+
+export async function createAdminUser(
+  email:    string,
+  name:     string,
+  role:     Exclude<UserRole, "MEMBER">,
+  password: string,
+): Promise<string> {
+  if (await emailExists(email)) throw new Error("A user with this email already exists.");
+  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const id   = await createUser({ email, name, passwordHash: hash, role, isActive: true });
+  return id.toString();
+}
+
+export async function createMemberUser(
+  email:       string,
+  name:        string,
+  memberId:    string,   // HYKE-XXXX
+  memberDocId: string,   // MongoDB ObjectId string
+  password:    string,
+): Promise<string> {
+  // If a user already exists for this email, skip silently (re-approval edge case)
+  if (await emailExists(email)) {
+    const existing = await findUserByEmail(email);
+    return existing!._id.toString();
+  }
+  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const id   = await createUser({
+    email,
+    name,
+    passwordHash: hash,
+    role:         "MEMBER",
+    memberId,
+    memberDocId,
+    isActive:     true,
+  });
+  return id.toString();
+}
+
+/** Generate a human-readable temporary password, e.g. "Hyke@483920" */
+export function generateTempPassword(): string {
+  const digits = Math.floor(100000 + Math.random() * 900000).toString();
+  return `Hyke@${digits}`;
+}
+
+// ─── Password management ──────────────────────────────────────────────────────
+
+export async function changePassword(
+  email:           string,
+  currentPassword: string,
+  newPassword:     string,
+): Promise<void> {
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error("User not found.");
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) throw new Error("Current password is incorrect.");
+  if (newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
+  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await updateUserPassword(email, hash);
+}
+
+// ─── Admin access management ──────────────────────────────────────────────────
+
+export { listAdminUsers, deleteUserById, findUserById };

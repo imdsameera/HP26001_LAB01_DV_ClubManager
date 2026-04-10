@@ -161,6 +161,18 @@ async function send(opts: {
   console.info(`[mailer] Email sent to ${opts.to} — messageId: ${info.messageId}`);
 }
 
+// ─── Public: Generic send (used by /emails templates) ────────────────────────
+
+export async function sendEmail(opts: {
+  to:      string;
+  subject: string;
+  text:    string;
+  html:    string;
+  from?:   string;
+}): Promise<void> {
+  await send({ ...opts, fromOverride: opts.from });
+}
+
 // ─── Public: Sender email verification ───────────────────────────────────────
 
 export async function sendVerificationEmail(
