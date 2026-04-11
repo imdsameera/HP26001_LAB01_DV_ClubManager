@@ -1,33 +1,27 @@
 /**
  * Seed script — creates the initial SUPER_ADMIN user.
- *
- * Usage:
- *   npx tsx scripts/seed-admin.ts
- *
- * Or with ts-node:
- *   npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/seed-admin.ts
+ * Rewritten as JS to avoid dependency on tsx/ts-node in restricted environment.
  */
 
-import bcrypt from "bcryptjs";
-import { MongoClient } from "mongodb";
-import { loadEnvConfig } from "@next/env";
-import * as path   from "path";
- 
- // Load environment variables via Next.js utility
- loadEnvConfig(process.cwd());
+const bcrypt = require("bcryptjs");
+const { MongoClient } = require("mongodb");
+const { loadEnvConfig } = require("@next/env");
+
+// Load environment variables via Next.js utility
+loadEnvConfig(process.cwd());
 
 const MONGO_URI = process.env.MONGODB_URI;
 const DB_NAME   = "club-management-dev";
 const COLL      = "users";
 
-// ── Default credentials (change these!) ──────────────────────────────────────
+// ── Default credentials ──────────────────────────────────────────────────────
 const ADMIN_EMAIL    = "admin@hyke.lk";
 const ADMIN_NAME     = "Super Admin";
-const ADMIN_PASSWORD = "Admin@123";   // ← Change after first login!
+const ADMIN_PASSWORD = "Admin@123";
 
 async function seed() {
   if (!MONGO_URI) {
-    console.error("❌  MONGODB_URI is not set in .env.local");
+    console.error("❌  MONGODB_URI is not set in environment");
     process.exit(1);
   }
 
@@ -57,10 +51,12 @@ async function seed() {
     console.log("✅  Super Admin created successfully!");
     console.log("   Email:    ", ADMIN_EMAIL);
     console.log("   Password: ", ADMIN_PASSWORD);
-    console.log("   ⚠️  Change your password after first login!");
   } finally {
     await client.close();
   }
 }
 
-seed().catch(e => { console.error("Seed failed:", e); process.exit(1); });
+seed().catch(e => {
+  console.error("Seed failed:", e);
+  process.exit(1);
+});
