@@ -5,6 +5,7 @@ import { findMemberById }              from "@/lib/repositories/memberRepository
 import { createMemberUser, generateTempPassword } from "@/lib/services/userService";
 import { sendEmail }                   from "@/lib/utils/mailer";
 import { welcomeWithCredentials }      from "@/emails";
+import type { MemberRole }             from "@/lib/models/member";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -12,10 +13,10 @@ export async function POST(_request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    let role: string | undefined;
+    let role: MemberRole | undefined;
     try {
       const body = await _request.json();
-      role = body?.role;
+      role = body?.role as MemberRole | undefined;
     } catch {
       // Ignored: empty or invalid JSON body
     }
@@ -66,7 +67,7 @@ export async function POST(_request: Request, context: RouteContext) {
           email:      doc.email,
           password:   tempPassword,
           loginUrl,
-          clubName:   settings.clubName || "Hyke Youth Club",
+          clubName:   settings.senderName || "Hyke Youth Club",
         });
         await sendEmail({ to: doc.email, ...template });
         console.info(`[approve] Welcome + credentials email sent to ${doc.email}`);
