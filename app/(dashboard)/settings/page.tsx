@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -884,11 +884,17 @@ const DEFAULT_SETTINGS: ClubSettings = {
   welcomeSubject:   "Welcome to Hyke Youth Club! 🎉",
   paymentReminders: false,
   weeklyDigest:     true,
+
+  clubName:         "Hyke Youth Club",
+  tagline:          "Empowering youth through adventure.",
+  publicEmail:      "info@hyke.lk",
+  phoneNumber:      "+94 77 000 0000",
+  headquarters:     "No. 12, Kandy Road, Colombo 05, Sri Lanka",
 };
 
 const VALID_TABS: TabId[] = ["general", "admin-access", "branding", "emails", "finance"];
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const { data: session } = useSession();
   const userRole = session?.user?.role as string | undefined;
   const searchParams = useSearchParams();
@@ -1102,5 +1108,17 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex bg-gray-50 h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0066FF] border-t-transparent" />
+      </div>
+    }>
+      <SettingsPageContent />
+    </Suspense>
   );
 }

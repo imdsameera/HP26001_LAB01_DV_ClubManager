@@ -1,7 +1,7 @@
-import { getDb } from "./lib/db/mongodb";
-import { DB_NAME as MEMBER_DB } from "./lib/models/member";
-import { USERS_COLLECTION } from "./lib/models/user";
-import { MEMBERS_COLLECTION } from "./lib/models/member";
+import { getDb } from "../lib/db/mongodb";
+import { DB_NAME as MEMBER_DB } from "../lib/models/member";
+import { USERS_COLLECTION } from "../lib/models/user";
+import { MEMBERS_COLLECTION } from "../lib/models/member";
 
 async function debugData() {
   const db = await getDb(MEMBER_DB);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import MemberFormModal from "@/components/ui/MemberFormModal";
 import { UserPlus, MessageCircle, ChevronRight } from "lucide-react";
@@ -73,7 +73,7 @@ function buildMemberFormData(d: MemberFormSavePayload): FormData {
 // ---------------------------------------------------------------------------
 // Page Component (Split View)
 // ---------------------------------------------------------------------------
-export default function MembersPage() {
+function MembersPageContent() {
   const searchParams = useSearchParams();
   const searchId = searchParams.get("id");
   const processedSearchRef = useRef(false);
@@ -353,5 +353,17 @@ export default function MembersPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0066FF] border-t-transparent" />
+      </div>
+    }>
+      <MembersPageContent />
+    </Suspense>
   );
 }

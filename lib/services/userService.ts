@@ -21,7 +21,7 @@ const SALT_ROUNDS = 12;
 export async function authenticateUser(
   identifier: string,
   password: string,
-): Promise<{ id: string; email: string; name: string; role: UserRole; memberId?: string } | null> {
+): Promise<{ id: string; email: string; name: string; role: UserRole; memberId?: string; avatarUrl?: string | null } | null> {
   const user = await findUserByIdentifier(identifier);
   if (!user || !user.isActive) return null;
   const valid = await bcrypt.compare(password, user.passwordHash);
