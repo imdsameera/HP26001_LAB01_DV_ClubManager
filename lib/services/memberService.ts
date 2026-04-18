@@ -14,12 +14,15 @@ import {
   deleteMemberById,
   findMemberById,
   findMemberByMemberId,
+  findMemberByEmail,
   findMembersByStatus,
   insertActiveMember,
   insertMember,
   updateMemberById,
   getAssignedRoles as getAssignedRolesFromDb,
+  checkExistingCredentials,
 } from "@/lib/repositories/memberRepository";
+import { deleteMemberAuthAccountByEmail } from "@/lib/repositories/userRepository";
 import type { AdminMemberFields, JoinFields } from "@/lib/validators/member";
 
 export async function getAssignedRoles(): Promise<MemberRole[]> {
@@ -136,6 +139,12 @@ export async function createPendingFromJoin(
   fields: JoinFields,
   avatarDataUrl?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Check for existing credentials before proceeding
+  const duplicates = await checkExistingCredentials(fields.nic, fields.email, fields.phone);
+  if (duplicates.email) return { ok: false, error: "This email is already registered." };
+  if (duplicates.nic) return { ok: false, error: "This NIC is already registered." };
+  if (duplicates.phone) return { ok: false, error: "This phone number is already registered." };
+
   const now = new Date();
   const nameKey = `${fields.initials}|${fields.firstName}|${fields.lastName}|${now.getTime()}`;
   const doc: Omit<MemberDocument, "_id"> = {
@@ -230,8 +239,20 @@ export async function updateActiveMember(
 }
 
 export async function removeMember(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const member = await findMemberById(id);
+  if (!member) return { ok: false, error: "Not found" };
+
   const ok = await deleteMemberById(id);
-  if (!ok) return { ok: false, error: "Not found" };
+  if (!ok) return { ok: false, error: "Failed to delete member" };
+
+  if (member.email) {
+    try {
+      await deleteMemberAuthAccountByEmail(member.email);
+    } catch (e) {
+      console.error("[removeMember] Failed to delete auth account for:", member.email, e);
+    }
+  }
+
   return { ok: true };
 }
 
@@ -252,6 +273,12 @@ export async function getMemberApiById(id: string): Promise<MemberApiRecord | nu
 
 export async function getMemberApiByMemberId(memberId: string): Promise<MemberApiRecord | null> {
   const doc = await findMemberByMemberId(memberId);
+  if (!doc) return null;
+  return documentToMemberApi(doc);
+}
+
+export async function getMemberApiByEmail(email: string): Promise<MemberApiRecord | null> {
+  const doc = await findMemberByEmail(email);
   if (!doc) return null;
   return documentToMemberApi(doc);
 }

@@ -55,17 +55,47 @@ export async function updateUserPassword(email: string, newHash: string): Promis
   );
 }
 
+export async function patchUser(
+  email: string,
+  data: Partial<Omit<UserDocument, "_id" | "email" | "createdAt">>
+): Promise<void> {
+  const c = await col();
+  await c.updateOne(
+    { email: email.toLowerCase().trim() },
+    { $set: { ...data, updatedAt: new Date() } },
+  );
+}
+
 export async function listAdminUsers(): Promise<UserDocument[]> {
   const c = await col();
   return c
-    .find({ role: { $in: ["SUPER_ADMIN", "SECRETARY", "TREASURER"] as UserRole[] } })
+    .find({ role: { $in: ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"] as UserRole[] } })
     .sort({ createdAt: -1 })
     .toArray();
+}
+
+export async function patchUserById(
+  id: string,
+  data: Partial<Omit<UserDocument, "_id" | "email" | "createdAt">>
+): Promise<void> {
+  const c = await col();
+  await c.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { ...data, updatedAt: new Date() } },
+  );
 }
 
 export async function deleteUserById(id: string): Promise<void> {
   const c = await col();
   await c.deleteOne({ _id: new ObjectId(id) });
+}
+
+export async function deleteMemberAuthAccountByEmail(email: string): Promise<void> {
+  const c = await col();
+  await c.deleteOne({ 
+    email: email.toLowerCase().trim(),
+    role: "MEMBER" 
+  });
 }
 
 export async function emailExists(email: string): Promise<boolean> {

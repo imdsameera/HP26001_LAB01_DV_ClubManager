@@ -1,6 +1,6 @@
 "use client";
 
-import { useState }       from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePathname }    from "next/navigation";
 import { useSession }     from "next-auth/react";
 import Sidebar            from "@/components/layout/Sidebar";
@@ -25,9 +25,27 @@ function getPageTitle(pathname: string): string {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const pathname  = usePathname();
   const pageTitle = getPageTitle(pathname);
   const { data: session } = useSession();
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/profile");
+      const data = await res.json();
+      if (data.avatarUrl) setUserAvatar(data.avatarUrl);
+      else setUserAvatar(null);
+    } catch (e) {
+      console.error("Failed to fetch profile info:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProfile();
+    window.addEventListener("profile-updated", fetchProfile);
+    return () => window.removeEventListener("profile-updated", fetchProfile);
+  }, [fetchProfile]);
 
   const userName  = session?.user?.name  ?? "Admin User";
   const userEmail = session?.user?.email ?? "";
@@ -41,6 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         userName={userName}
         userEmail={userEmail}
         userRole={userRole}
+        userAvatar={userAvatar}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden lg:ml-64">
@@ -50,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           userName={userName}
           userEmail={userEmail}
           userRole={userRole}
+          userAvatar={userAvatar}
         />
         <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}

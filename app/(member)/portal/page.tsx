@@ -1,250 +1,294 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import {
+  LogOut,
   Bell,
+  User,
+  Hash,
+  Mail,
+  Phone,
+  MessageCircle,
+  Home,
+  IdCard,
   Calendar,
   CheckCircle2,
+  AlertCircle,
   CreditCard,
   QrCode,
-  ArrowUpRight,
-  ChevronDown
+  LayoutDashboard,
+  Megaphone,
+  ChevronRight,
 } from "lucide-react";
+import { getInitials, getGreetingName } from "@/lib/utils/nameUtils";
 
-// ─── QR Code Component ────────────────────────────────────────────────────────
-function QRCodeHover({ value }: { value: string }) {
-  const [src, setSrc] = useState<string | null>(null);
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface MemberData {
+  id:         string;
+  name:       string;
+  memberId:   string;
+  email?:     string;
+  phone:      string;
+  whatsapp:   string;
+  nic:        string;
+  address:    string;
+  role:       string;
+  joinDate:   string;
+  avatarUrl?: string;
+}
 
-  useEffect(() => {
-    if (!value) return;
-    import("qrcode").then((QRCode) => {
-      QRCode.toDataURL(value, {
-        width: 120,
-        margin: 1,
-        color: { dark: "#0f172a", light: "#ffffff" },
-      })
-        .then(setSrc)
-        .catch(console.error);
-    });
-  }, [value]);
+// ─── Shared Components ────────────────────────────────────────────────────────
 
-  if (!src)
-    return (
-      <div className="flex h-[72px] w-[72px] items-center justify-center rounded-lg bg-white">
-        <QrCode size={24} className="animate-pulse text-gray-300" />
-      </div>
-    );
-
+function Badge({ children, variant = "blue" }: { children: React.ReactNode; variant?: "blue" | "amber" | "gray" }) {
+  const styles = {
+    blue:  "bg-blue-50 text-blue-600 border-blue-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100",
+    gray:  "bg-gray-50 text-gray-500 border-gray-100",
+  };
   return (
-    <div className="group relative cursor-pointer rounded-lg bg-white p-1.5 shadow-sm transition hover:scale-105 active:scale-95">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt="QR Code"
-        className="h-[60px] w-[60px] rounded object-contain"
-      />
-      <div className="absolute inset-0 hidden flex-col items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm group-hover:flex group-active:flex">
-        <QrCode size={18} className="text-white" />
-        <span className="mt-1 text-[9px] font-bold tracking-widest text-white">
-          TAP
-        </span>
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles[variant]}`}>
+      {children}
+    </span>
+  );
+}
+
+function SectionCard({ title, icon: Icon, comingSoon, children }: { 
+  title: string; icon: React.ElementType; comingSoon?: boolean; children: React.ReactNode 
+}) {
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+            <Icon size={16} />
+          </div>
+          <h3 className="font-bold text-slate-800">{title}</h3>
+        </div>
+        {comingSoon && <Badge variant="amber">Coming Soon</Badge>}
+      </div>
+      <div className={comingSoon ? "opacity-60 grayscale-[0.5]" : ""}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ReadOnlyField({ label, value, icon: Icon }: { label: string; value: string; icon: React.ElementType }) {
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-50 text-gray-400">
+        <Icon size={14} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</p>
+        <p className="text-sm font-medium text-slate-700 truncate">{value || "—"}</p>
       </div>
     </div>
   );
 }
 
 // ─── Main Portal UI ────────────────────────────────────────────────────────
+
 export default function PortalPage() {
-  const { data: session } = useSession();
-  const [filter, setFilter] = useState("This Month");
-  
-  // Dummy data
-  const name = session?.user?.name ?? "Member";
-  const firstName = name.split(" ")[0];
-  const initials = firstName ? firstName[0].toUpperCase() : "M";
-  const memberId = session?.user?.memberId ?? "#POL-042";
+  const { data: session, status: sessionStatus } = useSession();
+  const [member, setMember] = useState<MemberData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (sessionStatus === "authenticated" && session?.user?.email) {
+      const mid   = session.user.memberId ? encodeURIComponent(session.user.memberId) : "";
+      const email = encodeURIComponent(session.user.email);
+      
+      fetch(`/api/members?memberId=${mid}&email=${email}`)
+        .then(async res => {
+          if (!res.ok) throw new Error("Failed to load");
+          const data = await res.json();
+          setMember(data.members?.[0] ?? null);
+        })
+        .catch(err => console.error("Portal fetch error:", err))
+        .finally(() => setLoading(false));
+    } else if (sessionStatus === "unauthenticated") {
+      setLoading(false);
+    }
+  }, [sessionStatus, session?.user?.memberId, session?.user?.email]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F9FAFB]">
+        <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-100 border-t-blue-600" />
+      </div>
+    );
+  }
+
+  const name = member?.name ?? session?.user?.name ?? "Member";
+  const firstName = getGreetingName(name);
+  const memberId = member?.memberId ?? session?.user?.memberId ?? "HYKE-???";
 
   return (
-    <div className="flex-1 pb-10">
-      {/* ── 1. Top Header ── */}
-      <header className="flex h-16 items-center justify-between px-5 py-2">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 shadow-sm">
-            {initials}
+    <div className="min-h-screen bg-[#F9FAFB] pb-10">
+      {/* ── 1. Header ── */}
+      <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/80 px-5 py-3.5 backdrop-blur-md">
+        <div className="flex items-center justify-between max-w-5xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200">
+              <LayoutDashboard size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#0066FF]">Portal</p>
+              <h1 className="text-sm font-bold text-slate-900 leading-tight">Hello, {firstName}</h1>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
-              Welcome back
-            </p>
-            <p className="text-sm font-bold text-slate-900">Hello, {firstName} 👋</p>
-          </div>
+          
+          <button 
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-100 bg-white text-gray-500 shadow-sm transition-all hover:border-red-100 hover:bg-red-50 hover:text-red-500 active:scale-95"
+            title="Log Out"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
-        <button className="relative flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition active:scale-95">
-          <Bell size={18} className="text-gray-600" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-        </button>
       </header>
 
-      <div className="px-5">
-        {/* ── 2. The Digital ID Card (Hero Section) ── */}
-        <div className="mt-2 relative overflow-hidden rounded-2xl bg-[#0066FF] p-5 text-white shadow-lg shadow-blue-500/20">
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-          <div className="relative flex justify-between items-start">
-            <div>
-              <h2 className="text-xl font-bold">{name}</h2>
-              <p className="text-blue-100 text-sm mt-0.5">{memberId}</p>
-              <div className="mt-4 inline-block rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold backdrop-blur-md border border-white/10 shadow-sm">
-                Player
-              </div>
-            </div>
-            
-            <QRCodeHover value={memberId} />
-          </div>
-        </div>
-
-        {/* ── 3. Quick Stats Row ── */}
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          {/* Stat 1 */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-              Attendance This Month
-            </p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-800">85%</span>
-              <span className="flex items-center text-[10px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">
-                <ArrowUpRight size={10} className="mr-0.5" /> 5%
-              </span>
-            </div>
-          </div>
-          {/* Stat 2 */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-              Outstanding Dues
-            </p>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-red-600">Rs. 500</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── 4. Stacked Content Cards ── */}
-        <div className="mt-6 flex flex-col gap-6">
-          
-          {/* Card A: Next Event */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
-                <Calendar className="text-[#0066FF]" size={14} />
-              </div>
-              <h3 className="font-bold text-slate-800">Upcoming Calendar</h3>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-              <p className="text-[10px] font-bold tracking-wider text-[#0066FF] uppercase mb-1">
-                Next Event
-              </p>
-              <p className="text-[15px] font-bold text-slate-900">Evening Practice</p>
-              <p className="text-xs font-medium text-gray-500 mt-1">April 16, 5:00 PM</p>
-              
-              <div className="mt-5 flex gap-2.5">
-                <button className="flex-1 rounded-full bg-[#0066FF] py-3 text-[13px] font-bold text-white transition active:scale-95 shadow-md shadow-blue-500/20">
-                  Attending
-                </button>
-                <button className="flex-1 rounded-full border border-gray-200 bg-white py-3 text-[13px] font-bold text-slate-600 transition hover:bg-gray-50 active:scale-95 shadow-sm">
-                  Not Attending
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Card B: Attendance Heatmap */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
-                  <CheckCircle2 className="text-emerald-500" size={14} />
-                </div>
-                <h3 className="font-bold text-slate-800">My Attendance</h3>
-              </div>
+      <div className="px-5 mt-6 max-w-5xl mx-auto space-y-6">
+        
+        {/* ── 2. Profile Card (Priority) ── */}
+        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm shadow-gray-200/50">
+          <div className="h-24 bg-gradient-to-r from-[#0066FF] via-blue-400 to-blue-600" />
+          <div className="px-6 pb-6 -mt-10">
+            <div className="flex items-end justify-between">
               <div className="relative">
-                <select 
-                  value={filter}
-                  onChange={e => setFilter(e.target.value)}
-                  className="appearance-none rounded-lg bg-gray-50 pl-3 pr-7 py-1.5 text-xs font-bold text-slate-600 outline-none border border-gray-100"
-                >
-                  <option>This Month</option>
-                  <option>Last Month</option>
-                </select>
-                <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white bg-blue-100 text-3xl font-bold text-blue-700 shadow-md">
+                  {member?.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={member.avatarUrl} alt={name} className="h-full w-full rounded-2xl object-cover" />
+                  ) : (
+                    getInitials(name)
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm">
+                  <CheckCircle2 size={14} />
+                </div>
+              </div>
+              <div className="mb-2">
+                <Badge variant="blue">Active {member?.role ?? "Member"}</Badge>
               </div>
             </div>
-            
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 28 }).map((_, i) => {
-                const isPast = i < 21;
-                const attended = isPast && Math.random() > 0.25;
-                return (
-                  <div 
-                    key={i} 
-                    className={`aspect-square rounded-full transition-colors ${
-                      isPast 
-                        ? attended 
-                          ? 'bg-emerald-400 shadow-sm shadow-emerald-400/20' 
-                          : 'bg-gray-100' 
-                        : 'bg-gray-50 border border-gray-100'
-                    }`} 
-                  />
-                );
-              })}
+
+            <div className="mt-4">
+              <h2 className="text-xl font-bold text-slate-900">{name}</h2>
+              <div className="mt-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-500">
+                <Hash size={14} className="text-blue-500" />
+                <span>{memberId}</span>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-10">
+              <ReadOnlyField label="NIC Number" value={member?.nic ?? "—"} icon={IdCard} />
+              <ReadOnlyField label="Email Address" value={member?.email ?? "—"} icon={Mail} />
+              <ReadOnlyField label="Phone Number" value={member?.phone ?? "—"} icon={Phone} />
+              <ReadOnlyField label="WhatsApp" value={member?.whatsapp ?? "—"} icon={MessageCircle} />
+              <ReadOnlyField label="Permanent Address" value={member?.address ?? "—"} icon={Home} />
+              <ReadOnlyField label="Joined Date" value={member?.joinDate ?? "—"} icon={Calendar} />
             </div>
           </div>
+        </div>
 
-          {/* Card C: Payment Ledger */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
-                <CreditCard className="text-indigo-500" size={14} />
-              </div>
-              <h3 className="font-bold text-slate-800">Recent Transactions</h3>
-            </div>
-            
+        {/* ── 3. Feature Cards (Stacked/Grid) ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Notice Board */}
+          <SectionCard title="Notice Board" icon={Megaphone} comingSoon>
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-                <div>
-                  <p className="text-sm font-bold text-slate-800">April Dues</p>
-                  <span className="mt-1 inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600">
-                    Paid
-                  </span>
-                </div>
-                <p className="text-sm font-bold text-slate-800">Rs. 500</p>
+              <div className="rounded-xl border border-gray-50 bg-gray-50/50 p-3">
+                <p className="text-xs font-bold text-slate-800">Monthly General Meeting</p>
+                <p className="mt-1 text-[10px] font-medium text-gray-500">Scheduled for next Saturday at 10 AM.</p>
               </div>
-
-              <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-                <div>
-                  <p className="text-sm font-bold text-slate-800">Gear Fund</p>
-                  <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600">
-                    Pending
-                  </span>
-                </div>
-                <p className="text-sm font-bold text-slate-800">Rs. 1000</p>
-              </div>
-
-              <div className="flex items-center justify-between pb-1">
-                <div>
-                  <p className="text-sm font-bold text-slate-800">March Dues</p>
-                  <span className="mt-1 inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600">
-                    Paid
-                  </span>
-                </div>
-                <p className="text-sm font-bold text-slate-800">Rs. 500</p>
+              <div className="rounded-xl border border-gray-50 bg-gray-50/50 p-3">
+                <p className="text-xs font-bold text-slate-800">Annual Subscriptions</p>
+                <p className="mt-1 text-[10px] font-medium text-gray-500">Please settle your dues before end of the month.</p>
               </div>
             </div>
-            
-            <button className="mt-5 flex w-full h-[44px] items-center justify-center rounded-xl bg-gray-50/50 text-xs font-bold text-blue-600 transition hover:bg-blue-50 active:scale-95 border border-gray-100">
-              View Full History &rarr;
-            </button>
-          </div>
+          </SectionCard>
+
+          {/* My Attendance */}
+          <SectionCard title="My Attendance" icon={CheckCircle2} comingSoon>
+            <div className="flex items-center gap-4 py-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <span className="text-lg font-black italic">85%</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800">Regular Member</p>
+                <p className="mt-0.5 text-[10px] text-gray-400">Showing this month's status</p>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-1.5">
+              {[1,1,1,1,0,1,1].map((a, i) => (
+                <div key={i} className={`h-2.5 flex-1 rounded-full ${a ? 'bg-emerald-400' : 'bg-gray-100'}`} />
+              ))}
+            </div>
+          </SectionCard>
+
+          {/* My Finance */}
+          <SectionCard title="My Finance" icon={CreditCard} comingSoon>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-medium">
+                <span className="text-gray-400">Total Paid</span>
+                <span className="text-slate-700 font-bold">Rs. 1,500</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-medium">
+                <span className="text-gray-400">Outstanding</span>
+                <span className="text-red-500 font-bold underline decoration-red-200">Rs. 500</span>
+              </div>
+              <button className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-100 bg-gray-50 py-2.5 text-[11px] font-bold text-blue-600 transition hover:bg-blue-50">
+                Full Transaction History
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </SectionCard>
+
+        </div>
+
+        {/* ── 4. Digital ID / QR Card ── */}
+        <DigitalIDCard memberId={memberId} />
+
+      </div>
+    </div>
+  );
+}
+
+function DigitalIDCard({ memberId }: { memberId: string }) {
+  const [qrSrc, setQrSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    import("qrcode").then(QRCode => {
+      QRCode.toDataURL(memberId, {
+        width: 160,
+        margin: 1,
+        color: { dark: "#0f172a", light: "#ffffff" },
+      }).then(setQrSrc).catch(console.error);
+    });
+  }, [memberId]);
+
+  return (
+    <div className="rounded-3xl bg-slate-900 p-6 text-white shadow-xl shadow-slate-200">
+      <div className="flex flex-col sm:flex-row items-center gap-6 justify-between text-center sm:text-left">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 font-mono">Digital Identity</p>
+          <h3 className="mt-1 text-lg font-bold">Official Member Card</h3>
+          <p className="mt-2 text-xs font-medium text-slate-400 leading-relaxed max-w-sm">
+            Present this QR code during club meetings or events for seamless check-in and attendance recording.
+          </p>
+        </div>
+        <div className="shrink-0 rounded-2xl bg-white p-2 shadow-inner">
+          {qrSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={qrSrc} alt="QR Code" width={100} height={100} className="rounded-xl" />
+          ) : (
+            <div className="h-24 w-24 animate-pulse bg-gray-100 rounded-xl flex items-center justify-center">
+              <QrCode size={30} className="text-gray-300" />
+            </div>
+          )}
         </div>
       </div>
     </div>

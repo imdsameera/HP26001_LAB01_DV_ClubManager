@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
-import { Menu, Search }                   from "lucide-react";
+import { Menu, RotateCw }               from "lucide-react";
 import { usePathname }                    from "next/navigation";
 import NotificationPanel                  from "@/components/ui/NotificationPanel";
 import ProfileDropdown                    from "@/components/ui/ProfileDropdown";
+import GlobalSearch                       from "@/components/ui/GlobalSearch";
 import type { UserRole }                  from "@/lib/models/user";
 
 interface TopNavProps {
@@ -13,6 +13,7 @@ interface TopNavProps {
   userName:     string;
   userEmail:    string;
   userRole:     UserRole;
+  userAvatar?:  string | null;
 }
 
 // Map route → search placeholder
@@ -34,33 +35,10 @@ function getPlaceholder(pathname: string): string {
 }
 
 export default function TopNav({
-  pageTitle, onMenuToggle, userName, userEmail, userRole,
+  pageTitle, onMenuToggle, userName, userEmail, userRole, userAvatar,
 }: TopNavProps) {
   const pathname     = usePathname();
-  const searchRef    = useRef<HTMLInputElement>(null);
   const placeholder  = getPlaceholder(pathname);
-
-  // Press "/" to focus search
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const active = document.activeElement;
-    const isTyping =
-      active instanceof HTMLInputElement ||
-      active instanceof HTMLTextAreaElement ||
-      (active as HTMLElement)?.isContentEditable;
-
-    if (e.key === "/" && !isTyping) {
-      e.preventDefault();
-      searchRef.current?.focus();
-    }
-    if (e.key === "Escape") {
-      searchRef.current?.blur();
-    }
-  }, []);
-
-  useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
 
   return (
     <header
@@ -85,19 +63,17 @@ export default function TopNav({
       <div className="flex items-center gap-2">
 
         {/* Contextual search (desktop only) */}
-        <div className="relative hidden sm:block">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            ref={searchRef}
-            id="global-search"
-            type="search"
-            placeholder={`${placeholder} ( / )`}
-            className="h-9 w-56 rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-sm text-slate-700 placeholder:text-gray-400 outline-none transition focus:w-64 focus:border-[#0066FF] focus:bg-white focus:ring-2 focus:ring-blue-100"
-          />
-        </div>
+        <GlobalSearch placeholder={placeholder} />
+
+        {/* Refresh button */}
+        <button
+          onClick={() => window.location.reload()}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)]"
+          aria-label="Refresh application"
+          title="Refresh database and UI"
+        >
+          <RotateCw size={18} />
+        </button>
 
         {/* Notification panel */}
         <NotificationPanel />
@@ -107,6 +83,7 @@ export default function TopNav({
           name={userName}
           email={userEmail}
           role={userRole}
+          avatarUrl={userAvatar}
         />
       </div>
     </header>

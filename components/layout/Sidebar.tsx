@@ -7,32 +7,31 @@ import {
   CalendarDays, CircleDollarSign, Settings, X,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { getInitials } from "@/lib/utils/nameUtils";
 import type { UserRole } from "@/lib/models/user";
 
 interface NavItem { label: string; href: string; icon: React.ElementType; roles: UserRole[] }
-interface SidebarProps { isOpen: boolean; onClose: () => void; userName: string; userEmail: string; userRole: UserRole }
+interface SidebarProps { isOpen: boolean; onClose: () => void; userName: string; userEmail: string; userRole: UserRole; userAvatar?: string | null }
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",         href: "/dashboard",  icon: LayoutDashboard,  roles: ["SUPER_ADMIN", "SECRETARY", "TREASURER"] },
+  { label: "Dashboard",         href: "/dashboard",  icon: LayoutDashboard,  roles: ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"] },
   { label: "Members",           href: "/members",    icon: Users,            roles: ["SUPER_ADMIN", "SECRETARY"] },
-  { label: "Attendance",        href: "/attendance", icon: ClipboardCheck,   roles: ["SUPER_ADMIN", "SECRETARY", "TREASURER"] },
+  { label: "Attendance",        href: "/attendance", icon: ClipboardCheck,   roles: ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"] },
   { label: "Events & Calendar", href: "/events",     icon: CalendarDays,     roles: ["SUPER_ADMIN", "SECRETARY"] },
   { label: "Finance",           href: "/finance",    icon: CircleDollarSign, roles: ["SUPER_ADMIN", "TREASURER"] },
-  { label: "Settings",          href: "/settings",   icon: Settings,         roles: ["SUPER_ADMIN"] },
+  { label: "Settings",          href: "/settings",   icon: Settings,         roles: ["SUPER_ADMIN", "ADMIN"] },
 ];
 
 const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: "Super Admin",
+  ADMIN:       "Admin",
   SECRETARY:   "Secretary",
   TREASURER:   "Treasurer",
   MEMBER:      "Member",
 };
 
-function getInitials(name: string): string {
-  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "AD";
-}
 
-export default function Sidebar({ isOpen, onClose, userName, userEmail, userRole }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, userName, userEmail, userRole, userAvatar }: SidebarProps) {
   const pathname = usePathname();
   const navItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(userRole));
 
@@ -94,8 +93,11 @@ export default function Sidebar({ isOpen, onClose, userName, userEmail, userRole
         {/* Footer user */}
         <div className="shrink-0 border-t border-white/[0.07] p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0066FF] text-xs font-bold text-white">
-              {getInitials(userName)}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0066FF] text-xs font-bold text-white overflow-hidden">
+              {userAvatar ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={userAvatar} alt="" className="h-full w-full object-cover" />
+              ) : getInitials(userName)}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-white">{userName}</p>
