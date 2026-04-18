@@ -3,9 +3,11 @@ import "server-only";
 import bcrypt from "bcryptjs";
 import {
   findUserByEmail,
+  findUserByIdentifier,
   findUserById,
   createUser,
   updateUserPassword,
+  patchUser,
   listAdminUsers,
   deleteUserById,
   emailExists,
@@ -17,10 +19,10 @@ const SALT_ROUNDS = 12;
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export async function authenticateUser(
-  email: string,
+  identifier: string,
   password: string,
-): Promise<{ id: string; email: string; name: string; role: UserRole; memberId?: string } | null> {
-  const user = await findUserByEmail(email);
+): Promise<{ id: string; email: string; name: string; role: UserRole; memberId?: string; avatarUrl?: string | null } | null> {
+  const user = await findUserByIdentifier(identifier);
   if (!user || !user.isActive) return null;
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return null;
@@ -30,6 +32,7 @@ export async function authenticateUser(
     name:     user.name,
     role:     user.role,
     memberId: user.memberId,
+    avatarUrl: user.avatarUrl,
   };
 }
 
@@ -41,9 +44,16 @@ export async function createAdminUser(
   role:     Exclude<UserRole, "MEMBER">,
   password: string,
 ): Promise<string> {
-  if (await emailExists(email)) throw new Error("A user with this email already exists.");
   const hash = await bcrypt.hash(password, SALT_ROUNDS);
-  const id   = await createUser({ email, name, passwordHash: hash, role, isActive: true });
+  if (await emailExists(email)) {
+    const existing = await findUserByEmail(email);
+    if (existing!.role !== "MEMBER") {
+      throw new Error(`An admin with the email ${email} already exists.`);
+    }
+    await patchUser(email, { name, role, passwordHash: hash, isActive: true });
+    return existing!._id.toString();
+  }
+  const id = await createUser({ email, name, passwordHash: hash, role, isActive: true });
   return id.toString();
 }
 
@@ -54,13 +64,26 @@ export async function createMemberUser(
   memberDocId: string,   // MongoDB ObjectId string
   password:    string,
 ): Promise<string> {
-  // If a user already exists for this email, skip silently (re-approval edge case)
+  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+
   if (await emailExists(email)) {
     const existing = await findUserByEmail(email);
+    // If Admin, reject member binding to maintain security
+    if (existing!.role !== "MEMBER") {
+      throw new Error(`Cannot bind member account to email ${email}. It already exists as an Admin.`);
+    }
+    // Update existing Member with new memberId, doc linkage, and new temp password
+    await patchUser(email, {
+      name,
+      passwordHash: hash,
+      memberId,
+      memberDocId,
+      isActive: true,
+    });
     return existing!._id.toString();
   }
-  const hash = await bcrypt.hash(password, SALT_ROUNDS);
-  const id   = await createUser({
+
+  const id = await createUser({
     email,
     name,
     passwordHash: hash,

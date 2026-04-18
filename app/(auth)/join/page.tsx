@@ -6,7 +6,8 @@ import {
   ImagePlus,
   CheckCircle2,
   ShieldCheck,
-  Trash2
+  Trash2,
+  AlertCircle
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/ui/PhoneInput";
@@ -32,6 +33,7 @@ export default function JoinPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -107,6 +109,7 @@ export default function JoinPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const fd = new FormData();
@@ -128,7 +131,7 @@ export default function JoinPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(typeof body.error === "string" ? body.error : "Could not submit application.");
+        setFormError(typeof body.error === "string" ? body.error : "Could not submit application. Please check your credentials and try again.");
         return;
       }
       router.push("/join/pending");
@@ -376,6 +379,15 @@ export default function JoinPage() {
 
             {/* Submit */}
             <div className="mt-2 w-full border-t border-gray-100 pt-6">
+              {formError && (
+                <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                  <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-800">Check Your Details</p>
+                    <p className="mt-1 text-sm text-red-600">{formError}</p>
+                  </div>
+                </div>
+              )}
               <Button
                 type="submit"
                 variant="primary"

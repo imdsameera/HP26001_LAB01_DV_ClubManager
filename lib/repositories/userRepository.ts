@@ -16,6 +16,17 @@ export async function findUserByEmail(email: string): Promise<UserDocument | nul
   return c.findOne({ email: email.toLowerCase().trim() });
 }
 
+export async function findUserByIdentifier(identifier: string): Promise<UserDocument | null> {
+  const c = await col();
+  const searchStr = identifier.trim();
+  if (searchStr.includes('@')) {
+    return c.findOne({ email: searchStr.toLowerCase() });
+  } else {
+    // Use a case-insensitive regex for memberId matching
+    return c.findOne({ memberId: { $regex: new RegExp(`^${searchStr}$`, 'i') } });
+  }
+}
+
 export async function findUserById(id: string): Promise<UserDocument | null> {
   const c = await col();
   return c.findOne({ _id: new ObjectId(id) });
@@ -44,17 +55,47 @@ export async function updateUserPassword(email: string, newHash: string): Promis
   );
 }
 
+export async function patchUser(
+  email: string,
+  data: Partial<Omit<UserDocument, "_id" | "email" | "createdAt">>
+): Promise<void> {
+  const c = await col();
+  await c.updateOne(
+    { email: email.toLowerCase().trim() },
+    { $set: { ...data, updatedAt: new Date() } },
+  );
+}
+
 export async function listAdminUsers(): Promise<UserDocument[]> {
   const c = await col();
   return c
-    .find({ role: { $in: ["SUPER_ADMIN", "SECRETARY", "TREASURER"] as UserRole[] } })
+    .find({ role: { $in: ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"] as UserRole[] } })
     .sort({ createdAt: -1 })
     .toArray();
+}
+
+export async function patchUserById(
+  id: string,
+  data: Partial<Omit<UserDocument, "_id" | "email" | "createdAt">>
+): Promise<void> {
+  const c = await col();
+  await c.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { ...data, updatedAt: new Date() } },
+  );
 }
 
 export async function deleteUserById(id: string): Promise<void> {
   const c = await col();
   await c.deleteOne({ _id: new ObjectId(id) });
+}
+
+export async function deleteMemberAuthAccountByEmail(email: string): Promise<void> {
+  const c = await col();
+  await c.deleteOne({ 
+    email: email.toLowerCase().trim(),
+    role: "MEMBER" 
+  });
 }
 
 export async function emailExists(email: string): Promise<boolean> {

@@ -4,7 +4,7 @@ import { NextResponse }   from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-const ADMIN_ROLES = ["SUPER_ADMIN", "SECRETARY", "TREASURER"];
+const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -37,30 +37,27 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/portal", req.url));
   }
 
-  // ── Admin trying to access member portal ──────────────────────────────────────
-  if (ADMIN_ROLES.includes(role) && pathname.startsWith("/portal")) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
+  // Allow Admins to access /portal for read-only viewing of Member accounts
 
   // ── Route-level RBAC ──────────────────────────────────────────────────────────
 
-  // Settings — SUPER_ADMIN only
-  if (pathname.startsWith("/settings") && role !== "SUPER_ADMIN") {
+  // Settings — SUPER_ADMIN and ADMIN
+  if (pathname.startsWith("/settings") && role !== "SUPER_ADMIN" && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Finance — SUPER_ADMIN or TREASURER
+  // Finance — SUPER_ADMIN, ADMIN, or TREASURER
   if (
     pathname.startsWith("/finance") &&
-    role !== "SUPER_ADMIN" && role !== "TREASURER"
+    role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "TREASURER"
   ) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Members / Events — SUPER_ADMIN or SECRETARY
+  // Members / Events — SUPER_ADMIN, ADMIN, or SECRETARY
   if (
     (pathname.startsWith("/members") || pathname.startsWith("/events")) &&
-    role !== "SUPER_ADMIN" && role !== "SECRETARY"
+    role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "SECRETARY"
   ) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
@@ -71,6 +68,6 @@ export default auth((req) => {
 export const config = {
   // Match all routes except Next.js internals, static files, and the NextAuth API
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|public).*)",
   ],
 };

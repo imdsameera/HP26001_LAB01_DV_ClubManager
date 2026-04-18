@@ -10,14 +10,21 @@ const SETTINGS_DOC_ID     = "global";
 // ─── Public interface (safe to send to client) ────────────────────────────────
 
 export interface ClubSettings {
-  senderEmail:        string;   // verified "From" address
+  senderEmail:         string;   // verified "From" address
   senderEmailPending?: string;  // awaiting email verification
-  senderName:         string;   // "From" display name
-  newMemberAlerts:    boolean;
-  welcomeTemplate:    string;
-  welcomeSubject:     string;
-  paymentReminders:   boolean;  // future
-  weeklyDigest:       boolean;  // future
+  senderName:          string;   // "From" display name
+  newMemberAlerts:     boolean;
+  welcomeTemplate:     string;
+  welcomeSubject:      string;
+  paymentReminders:    boolean;  // future
+  weeklyDigest:        boolean;  // future
+
+  // General Profile
+  clubName:            string;
+  tagline:             string;
+  publicEmail:         string;
+  phoneNumber:         string;
+  headquarters:        string;
 }
 
 // ─── Internal DB document (includes private token fields) ────────────────────
@@ -39,6 +46,12 @@ export const DEFAULT_SETTINGS: ClubSettings = {
   welcomeSubject:     "Welcome to Hyke Youth Club! 🎉",
   paymentReminders:   false,
   weeklyDigest:       true,
+
+  clubName:           "Hyke Youth Club",
+  tagline:            "Empowering youth through adventure.",
+  publicEmail:        "info@hyke.lk",
+  phoneNumber:        "+94 77 000 0000",
+  headquarters:       "No. 12, Kandy Road, Colombo 05, Sri Lanka",
 };
 
 // ─── Collection helpers ───────────────────────────────────────────────────────

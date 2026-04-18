@@ -4,13 +4,15 @@ import {
   listAdminUsers,
   createAdminUser,
   deleteUserById,
+  findUserById,
 } from "@/lib/services/userService";
+import { patchUserById } from "@/lib/repositories/userRepository";
 import type { UserRole } from "@/lib/models/user";
 
 // ─── GET /api/admin/users — list all admin accounts ──────────────────────────
 export async function GET() {
   const session = await auth();
-  if (session?.user?.role !== "SUPER_ADMIN") {
+  if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -30,7 +32,7 @@ export async function GET() {
 // ─── POST /api/admin/users — create a new admin account ──────────────────────
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (session?.user?.role !== "SUPER_ADMIN") {
+  if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (!email || !name || !role || !password) {
       return NextResponse.json({ error: "All fields are required." }, { status: 400 });
     }
-    if (!["SUPER_ADMIN", "SECRETARY", "TREASURER"].includes(role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"].includes(role)) {
       return NextResponse.json({ error: "Invalid role." }, { status: 400 });
     }
     if (password.length < 8) {
@@ -63,7 +65,7 @@ export async function POST(request: NextRequest) {
 // ─── DELETE /api/admin/users?id=xxx — revoke admin access ────────────────────
 export async function DELETE(request: NextRequest) {
   const session = await auth();
-  if (session?.user?.role !== "SUPER_ADMIN") {
+  if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -76,6 +78,51 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "You cannot revoke your own access." }, { status: 400 });
   }
 
+  const target = await findUserById(id);
+  if (!target) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (session.user.role === "ADMIN" && ["SUPER_ADMIN", "ADMIN"].includes(target.role)) {
+    return NextResponse.json({ error: "You do not have permission to remove this admin." }, { status: 403 });
+  }
+
   await deleteUserById(id);
   return NextResponse.json({ ok: true });
+}
+
+// ─── PATCH /api/admin/users — change a user's role ───────────────────────────
+export async function PATCH(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  try {
+    const { id, role } = await request.json() as { id: string; role: string };
+    if (!id || !role) return NextResponse.json({ error: "Missing id or role." }, { status: 400 });
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"].includes(role)) {
+      return NextResponse.json({ error: "Invalid role." }, { status: 400 });
+    }
+
+    const target = await findUserById(id);
+    if (!target) return NextResponse.json({ error: "User not found." }, { status: 404 });
+
+    // Prevent self-role-change
+    const selfId = (session.user as { id?: string }).id;
+    if (selfId && id === selfId) {
+      return NextResponse.json({ error: "You cannot change your own role." }, { status: 400 });
+    }
+
+    // ADMIN cannot change ADMIN or SUPER_ADMIN roles
+    if (session.user.role === "ADMIN" && ["SUPER_ADMIN", "ADMIN"].includes(target.role)) {
+      return NextResponse.json({ error: "You do not have permission to change this user's role." }, { status: 403 });
+    }
+
+    await patchUserById(id, { role: role as UserRole });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Server error";
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
 }
