@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createActiveMember,
+  getMemberApiByMemberId,
   listActiveMembersApi,
   listPendingApprovals,
 } from "@/lib/services/memberService";
@@ -10,7 +11,16 @@ import { adminFieldsFromFormData, validateAdminMemberFields } from "@/lib/valida
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status") ?? "active";
+    const status    = searchParams.get("status")   ?? "active";
+    const memberIdQ = searchParams.get("memberId");
+
+    // Single-member lookup by human-readable memberId (e.g. HYKE-001)
+    if (memberIdQ) {
+      const member = await getMemberApiByMemberId(memberIdQ);
+      if (!member) return NextResponse.json({ error: "Member not found" }, { status: 404 });
+      return NextResponse.json({ members: [member] });
+    }
+
     if (status === "pending") {
       const pending = await listPendingApprovals();
       return NextResponse.json({ pending });

@@ -3,6 +3,7 @@ import "server-only";
 import bcrypt from "bcryptjs";
 import {
   findUserByEmail,
+  findUserByIdentifier,
   findUserById,
   createUser,
   updateUserPassword,
@@ -17,10 +18,10 @@ const SALT_ROUNDS = 12;
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export async function authenticateUser(
-  email: string,
+  identifier: string,
   password: string,
 ): Promise<{ id: string; email: string; name: string; role: UserRole; memberId?: string } | null> {
-  const user = await findUserByEmail(email);
+  const user = await findUserByIdentifier(identifier);
   if (!user || !user.isActive) return null;
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return null;

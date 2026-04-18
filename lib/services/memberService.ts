@@ -13,6 +13,7 @@ import {
   countMembersByStatus,
   deleteMemberById,
   findMemberById,
+  findMemberByMemberId,
   findMembersByStatus,
   insertActiveMember,
   insertMember,
@@ -246,5 +247,11 @@ export async function approveMember(
 export async function getMemberApiById(id: string): Promise<MemberApiRecord | null> {
   const doc = await findMemberById(id);
   if (!doc || doc.status !== "active") return null;
+  return documentToMemberApi(doc);
+}
+
+export async function getMemberApiByMemberId(memberId: string): Promise<MemberApiRecord | null> {
+  const doc = await findMemberByMemberId(memberId);
+  if (!doc) return null;
   return documentToMemberApi(doc);
 }

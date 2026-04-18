@@ -16,6 +16,17 @@ export async function findUserByEmail(email: string): Promise<UserDocument | nul
   return c.findOne({ email: email.toLowerCase().trim() });
 }
 
+export async function findUserByIdentifier(identifier: string): Promise<UserDocument | null> {
+  const c = await col();
+  const searchStr = identifier.trim();
+  if (searchStr.includes('@')) {
+    return c.findOne({ email: searchStr.toLowerCase() });
+  } else {
+    // Use a case-insensitive regex for memberId matching
+    return c.findOne({ memberId: { $regex: new RegExp(`^${searchStr}$`, 'i') } });
+  }
+}
+
 export async function findUserById(id: string): Promise<UserDocument | null> {
   const c = await col();
   return c.findOne({ _id: new ObjectId(id) });

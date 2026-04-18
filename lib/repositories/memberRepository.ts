@@ -77,6 +77,11 @@ export async function findMembersByStatus(status: MemberStatus): Promise<MemberD
   return coll.find({ status }).sort(sort).toArray();
 }
 
+export async function findMemberByMemberId(memberId: string): Promise<MemberDocument | null> {
+  const coll = await getColl();
+  return coll.findOne({ memberId, status: "active" });
+}
+
 export async function countMembersByStatus(status: MemberStatus): Promise<number> {
   const coll = await getColl();
   return coll.countDocuments({ status });

@@ -9,7 +9,10 @@ import {
   Home,
   Mail,
   Edit2,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -124,6 +127,65 @@ function QRCode({ value, size = 128 }: { value: string; size?: number }) {
   );
 }
 
+// ── Portal link row shown in profile card ───────────────────────────────────
+function PortalLinkRow({ memberId }: { memberId: string }) {
+  const [copied, setCopied] = useState(false);
+  const portalUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/portal`
+    : "/portal";
+  const memberPortalUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/portal/${encodeURIComponent(memberId)}`
+    : `/portal/${encodeURIComponent(memberId)}`;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(memberPortalUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="mt-3 flex flex-col gap-1.5">
+      {/* Invite action */}
+      <a
+        href={`mailto:?subject=Your%20Club%20Portal%20Access&body=Hello%2C%0A%0AYou%20can%20access%20your%20member%20portal%20here%3A%20${encodeURIComponent(memberPortalUrl)}%0A%0AYour%20Member%20ID%3A%20${encodeURIComponent(memberId)}`}
+        className="flex items-center gap-1.5 text-xs font-semibold text-[#0066FF] hover:underline cursor-pointer transition"
+      >
+        <Mail size={13} /> Invite to Portal
+      </a>
+      {/* Direct member portal link */}
+      <a
+        href={memberPortalUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline cursor-pointer transition"
+      >
+        <ExternalLink size={13} /> Open Member Portal
+      </a>
+      {/* Portal URL chip */}
+      <div className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-1.5">
+        <ExternalLink size={11} className="shrink-0 text-blue-400" />
+        <a
+          href={portalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 truncate font-mono text-[10px] text-blue-600 hover:text-blue-800 hover:underline transition"
+          title={memberPortalUrl}
+        >
+          {`/portal/${memberId}`}
+        </a>
+        <button
+          onClick={handleCopy}
+          className="shrink-0 rounded p-0.5 text-blue-400 transition hover:text-blue-700 active:scale-90"
+          title="Copy member portal link"
+        >
+          {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DetailItem({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -228,9 +290,7 @@ export default function MemberDetailPanel({ member, onClose, onRemove, onEdit }:
                   >
                     {member.role}
                   </span>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#0066FF] hover:underline cursor-pointer transition">
-                    <Mail size={13} /> Invite to Portal
-                  </div>
+                  <PortalLinkRow memberId={member.memberId} />
                 </div>
               </div>
               <div className="flex flex-col items-center justify-center p-6 bg-gray-50/30">

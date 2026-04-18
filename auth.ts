@@ -16,14 +16,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email:    { label: "Email",    type: "email"    },
-        password: { label: "Password", type: "password" },
+        identifier: { label: "Email or Member ID", type: "text" },
+        password:   { label: "Password",        type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.identifier || !credentials?.password) return null;
         return authenticateUser(
-          credentials.email    as string,
-          credentials.password as string,
+          credentials.identifier as string,
+          credentials.password   as string,
         );
       },
     }),

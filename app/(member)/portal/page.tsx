@@ -1,306 +1,251 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession }          from "next-auth/react";
+import { useSession } from "next-auth/react";
 import {
-  User, CalendarDays, ClipboardCheck, CreditCard,
-  ChevronDown, QrCode, CheckCircle2, AlertCircle,
+  Bell,
+  Calendar,
+  CheckCircle2,
+  CreditCard,
+  QrCode,
+  ArrowUpRight,
+  ChevronDown
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type DateFilter = "this_month" | "last_month" | "this_year";
-
-interface MemberData {
-  firstName:  string;
-  lastName:   string;
-  memberId:   string;
-  email:      string;
-  phone:      string;
-  role:       string;
-  joinDate:   string;
-  avatarUrl?: string;
-  status:     string;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-function formatDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-}
-
-function getInitials(first: string, last: string): string {
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
-}
-
-// Simple placeholder attendance data
-function buildAttendanceData(filter: DateFilter) {
-  const now   = new Date();
-  const count = filter === "this_year" ? 12 : 4;
-  return Array.from({ length: count }, (_, i) => ({
-    label:    filter === "this_year" ? MONTHS[i] : `Week ${i + 1}`,
-    attended: Math.random() > 0.3,
-  }));
-}
-
-// ─── QR Code component ────────────────────────────────────────────────────────
-function QRCodeDisplay({ value }: { value: string }) {
+// ─── QR Code Component ────────────────────────────────────────────────────────
+function QRCodeHover({ value }: { value: string }) {
   const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    import("qrcode").then(QRCode => {
+    if (!value) return;
+    import("qrcode").then((QRCode) => {
       QRCode.toDataURL(value, {
-        width:  200,
-        margin: 2,
+        width: 120,
+        margin: 1,
         color: { dark: "#0f172a", light: "#ffffff" },
-      }).then(setSrc).catch(console.error);
+      })
+        .then(setSrc)
+        .catch(console.error);
     });
   }, [value]);
 
-  if (!src) return (
-    <div className="flex h-[120px] w-[120px] items-center justify-center rounded-xl bg-gray-100">
-      <QrCode size={32} className="animate-pulse text-gray-300" />
-    </div>
-  );
-
-  return (
-    <div className="rounded-xl border-4 border-white p-1 shadow-md">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={`QR code for ${value}`} width={112} height={112} className="rounded-lg" />
-    </div>
-  );
-}
-
-// ─── Card shell ───────────────────────────────────────────────────────────────
-function Card({ title, icon: Icon, children, className = "" }: {
-  title: string; icon: React.ElementType; children: React.ReactNode; className?: string;
-}) {
-  return (
-    <div className={`rounded-2xl border border-gray-200 bg-white shadow-sm ${className}`}>
-      <div className="flex items-center gap-2.5 border-b border-gray-100 px-5 py-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
-          <Icon size={14} className="text-[#0066FF]" />
-        </div>
-        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+  if (!src)
+    return (
+      <div className="flex h-[72px] w-[72px] items-center justify-center rounded-lg bg-white">
+        <QrCode size={24} className="animate-pulse text-gray-300" />
       </div>
-      <div className="p-5">{children}</div>
+    );
+
+  return (
+    <div className="group relative cursor-pointer rounded-lg bg-white p-1.5 shadow-sm transition hover:scale-105 active:scale-95">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="QR Code"
+        className="h-[60px] w-[60px] rounded object-contain"
+      />
+      <div className="absolute inset-0 hidden flex-col items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm group-hover:flex group-active:flex">
+        <QrCode size={18} className="text-white" />
+        <span className="mt-1 text-[9px] font-bold tracking-widest text-white">
+          TAP
+        </span>
+      </div>
     </div>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Portal UI ────────────────────────────────────────────────────────
 export default function PortalPage() {
   const { data: session } = useSession();
-  const [filter,   setFilter]   = useState<DateFilter>("this_month");
-  const [member,   setMember]   = useState<MemberData | null>(null);
-  const [loading,  setLoading]  = useState(true);
-
-  const memberId    = session?.user?.memberId;
-  const attendance  = buildAttendanceData(filter);
-  const attended    = attendance.filter(a => a.attended).length;
-  const pct         = Math.round((attended / attendance.length) * 100);
-
-  // Fetch member data
-  useEffect(() => {
-    if (!memberId) { setLoading(false); return; }
-    fetch(`/api/members?memberId=${encodeURIComponent(memberId)}`)
-      .then(r => r.json())
-      .then((data: { members?: MemberData[] }) => {
-        setMember(data.members?.[0] ?? null);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [memberId]);
-
-  const upcomingEvents = [
-    { title: "Monthly General Meeting", date: "Apr 20, 2026", type: "Meeting" },
-    { title: "Charity Fundraiser Walk",  date: "Apr 27, 2026", type: "Event"   },
-    { title: "Sports Day",               date: "May 10, 2026", type: "Event"   },
-  ];
-
-  const payments = [
-    { month: "March 2026",   status: "paid",    amount: "Rs. 500" },
-    { month: "February 2026", status: "paid",   amount: "Rs. 500" },
-    { month: "January 2026",  status: "overdue", amount: "Rs. 500" },
-  ];
-
-  const filterLabel: Record<DateFilter, string> = {
-    this_month: "This Month",
-    last_month: "Last Month",
-    this_year:  "This Year",
-  };
+  const [filter, setFilter] = useState("This Month");
+  
+  // Dummy data
+  const name = session?.user?.name ?? "Member";
+  const firstName = name.split(" ")[0];
+  const initials = firstName ? firstName[0].toUpperCase() : "M";
+  const memberId = session?.user?.memberId ?? "#POL-042";
 
   return (
-    <div className="space-y-5">
-      {/* ── Page header + date filter ─────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">
-            Welcome back, {session?.user?.name?.split(" ")[0] ?? "Member"}! 👋
-          </h1>
-          <p className="mt-0.5 text-sm text-gray-500">Here's your membership overview.</p>
+    <div className="flex-1 pb-10">
+      {/* ── 1. Top Header ── */}
+      <header className="flex h-16 items-center justify-between px-5 py-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 shadow-sm">
+            {initials}
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
+              Welcome back
+            </p>
+            <p className="text-sm font-bold text-slate-900">Hello, {firstName} 👋</p>
+          </div>
+        </div>
+        <button className="relative flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition active:scale-95">
+          <Bell size={18} className="text-gray-600" />
+          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+        </button>
+      </header>
+
+      <div className="px-5">
+        {/* ── 2. The Digital ID Card (Hero Section) ── */}
+        <div className="mt-2 relative overflow-hidden rounded-2xl bg-[#0066FF] p-5 text-white shadow-lg shadow-blue-500/20">
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+          <div className="relative flex justify-between items-start">
+            <div>
+              <h2 className="text-xl font-bold">{name}</h2>
+              <p className="text-blue-100 text-sm mt-0.5">{memberId}</p>
+              <div className="mt-4 inline-block rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold backdrop-blur-md border border-white/10 shadow-sm">
+                Player
+              </div>
+            </div>
+            
+            <QRCodeHover value={memberId} />
+          </div>
         </div>
 
-        <div className="relative">
-          <select
-            value={filter}
-            onChange={e => setFilter(e.target.value as DateFilter)}
-            className="appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-[#0066FF]"
-          >
-            <option value="this_month">This Month</option>
-            <option value="last_month">Last Month</option>
-            <option value="this_year">This Year</option>
-          </select>
-          <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        {/* ── 3. Quick Stats Row ── */}
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          {/* Stat 1 */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              Attendance This Month
+            </p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-slate-800">85%</span>
+              <span className="flex items-center text-[10px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">
+                <ArrowUpRight size={10} className="mr-0.5" /> 5%
+              </span>
+            </div>
+          </div>
+          {/* Stat 2 */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              Outstanding Dues
+            </p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-red-600">Rs. 500</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* ── 2×2 Grid ─────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-2">
-
-        {/* ── Card 1: Profile + QR ───────────────────── */}
-        <Card title="My Profile" icon={User}>
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#0066FF]" />
+        {/* ── 4. Stacked Content Cards ── */}
+        <div className="mt-6 flex flex-col gap-6">
+          
+          {/* Card A: Next Event */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
+                <Calendar className="text-[#0066FF]" size={14} />
+              </div>
+              <h3 className="font-bold text-slate-800">Upcoming Calendar</h3>
             </div>
-          ) : (
-            <div className="flex items-start gap-5">
-              <QRCodeDisplay value={memberId ?? "HYKE-0000"} />
+            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+              <p className="text-[10px] font-bold tracking-wider text-[#0066FF] uppercase mb-1">
+                Next Event
+              </p>
+              <p className="text-[15px] font-bold text-slate-900">Evening Practice</p>
+              <p className="text-xs font-medium text-gray-500 mt-1">April 16, 5:00 PM</p>
+              
+              <div className="mt-5 flex gap-2.5">
+                <button className="flex-1 rounded-full bg-[#0066FF] py-3 text-[13px] font-bold text-white transition active:scale-95 shadow-md shadow-blue-500/20">
+                  Attending
+                </button>
+                <button className="flex-1 rounded-full border border-gray-200 bg-white py-3 text-[13px] font-bold text-slate-600 transition hover:bg-gray-50 active:scale-95 shadow-sm">
+                  Not Attending
+                </button>
+              </div>
+            </div>
+          </div>
 
-              <div className="min-w-0 flex-1 space-y-2.5">
+          {/* Card B: Attendance Heatmap */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
+                  <CheckCircle2 className="text-emerald-500" size={14} />
+                </div>
+                <h3 className="font-bold text-slate-800">My Attendance</h3>
+              </div>
+              <div className="relative">
+                <select 
+                  value={filter}
+                  onChange={e => setFilter(e.target.value)}
+                  className="appearance-none rounded-lg bg-gray-50 pl-3 pr-7 py-1.5 text-xs font-bold text-slate-600 outline-none border border-gray-100"
+                >
+                  <option>This Month</option>
+                  <option>Last Month</option>
+                </select>
+                <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({ length: 28 }).map((_, i) => {
+                const isPast = i < 21;
+                const attended = isPast && Math.random() > 0.25;
+                return (
+                  <div 
+                    key={i} 
+                    className={`aspect-square rounded-full transition-colors ${
+                      isPast 
+                        ? attended 
+                          ? 'bg-emerald-400 shadow-sm shadow-emerald-400/20' 
+                          : 'bg-gray-100' 
+                        : 'bg-gray-50 border border-gray-100'
+                    }`} 
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card C: Payment Ledger */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
+                <CreditCard className="text-indigo-500" size={14} />
+              </div>
+              <h3 className="font-bold text-slate-800">Recent Transactions</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                 <div>
-                  <p className="text-lg font-bold text-slate-900">
-                    {member ? `${member.firstName} ${member.lastName}` : session?.user?.name}
-                  </p>
-                  <span className="inline-block rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600">
-                    {member?.role ?? "Member"}
+                  <p className="text-sm font-bold text-slate-800">April Dues</p>
+                  <span className="mt-1 inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600">
+                    Paid
                   </span>
                 </div>
-
-                <div className="space-y-1.5 text-xs text-gray-600">
-                  {[
-                    { label: "Member ID",  val: member?.memberId  ?? memberId ?? "—" },
-                    { label: "Email",      val: member?.email     ?? session?.user?.email ?? "—" },
-                    { label: "Phone",      val: member?.phone     ?? "—" },
-                    { label: "Joined",     val: member?.joinDate  ? formatDate(member.joinDate) : "—" },
-                    { label: "Status",     val: member?.status    ?? "Active" },
-                  ].map(({ label, val }) => (
-                    <div key={label} className="flex gap-2">
-                      <span className="w-20 shrink-0 font-medium text-gray-400">{label}</span>
-                      <span className="text-slate-700">{val}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm font-bold text-slate-800">Rs. 500</p>
               </div>
-            </div>
-          )}
-          <p className="mt-4 text-center text-[10px] text-gray-400">
-            Scan QR code for quick check-in · {memberId ?? ""}
-          </p>
-        </Card>
 
-        {/* ── Card 2: Notice Board / Upcoming Events ─── */}
-        <Card title="Notice Board" icon={CalendarDays}>
-          <div className="space-y-3">
-            {upcomingEvents.map(ev => (
-              <div key={ev.title} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3.5 py-3">
-                <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-[#0066FF] text-white">
-                  <span className="text-[11px] font-bold leading-none">
-                    {ev.date.split(" ")[1]?.replace(",", "")}
-                  </span>
-                  <span className="text-[9px] opacity-80">{ev.date.split(" ")[0]}</span>
-                </div>
+              <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">{ev.title}</p>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
-                      {ev.type}
-                    </span>
-                    <span className="text-[11px] text-gray-400">{ev.date}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-center text-[11px] text-gray-400">
-            {filterLabel[filter]} · showing next 3 events
-          </p>
-        </Card>
-
-        {/* ── Card 3: Attendance ─────────────────────── */}
-        <Card title="My Attendance" icon={ClipboardCheck}>
-          {/* Summary bar */}
-          <div className="mb-4 flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3">
-            <div>
-              <p className="text-2xl font-bold text-[#0066FF]">{pct}%</p>
-              <p className="text-[11px] text-blue-500">Attendance rate</p>
-            </div>
-            <div className="text-right text-xs text-blue-600">
-              <p className="font-semibold">{attended} attended</p>
-              <p className="text-blue-400">of {attendance.length} sessions</p>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="mb-4 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-700"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-
-          {/* Grid dots */}
-          <div className="grid grid-cols-6 gap-1.5">
-            {attendance.map((a, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div className={`h-7 w-7 rounded-md ${a.attended ? "bg-[#0066FF]" : "bg-gray-100"}`} />
-                <span className="text-[9px] text-gray-400">{a.label}</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-center text-[11px] text-gray-400">{filterLabel[filter]} attendance</p>
-        </Card>
-
-        {/* ── Card 4: Finance / Dues ─────────────────── */}
-        <Card title="My Finance" icon={CreditCard}>
-          {/* Status badge */}
-          <div className="mb-4 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-800">Dues up to date</p>
-              <p className="text-[11px] text-emerald-600">Next payment: May 1, 2026 — Rs. 500</p>
-            </div>
-          </div>
-
-          {/* Payment history */}
-          <div className="space-y-2">
-            {payments.map(p => (
-              <div key={p.month} className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-2.5">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{p.month}</p>
-                  <p className="text-[11px] text-gray-400">Monthly dues</p>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-semibold text-slate-800">{p.amount}</span>
-                  <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    p.status === "paid"
-                      ? "bg-emerald-50 text-emerald-600"
-                      : "bg-red-50 text-red-600"
-                  }`}>
-                    {p.status === "paid"
-                      ? <CheckCircle2 size={10} />
-                      : <AlertCircle  size={10} />
-                    }
-                    {p.status}
+                  <p className="text-sm font-bold text-slate-800">Gear Fund</p>
+                  <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600">
+                    Pending
                   </span>
                 </div>
+                <p className="text-sm font-bold text-slate-800">Rs. 1000</p>
               </div>
-            ))}
+
+              <div className="flex items-center justify-between pb-1">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">March Dues</p>
+                  <span className="mt-1 inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600">
+                    Paid
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-slate-800">Rs. 500</p>
+              </div>
+            </div>
+            
+            <button className="mt-5 flex w-full h-[44px] items-center justify-center rounded-xl bg-gray-50/50 text-xs font-bold text-blue-600 transition hover:bg-blue-50 active:scale-95 border border-gray-100">
+              View Full History &rarr;
+            </button>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

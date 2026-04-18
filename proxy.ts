@@ -37,10 +37,7 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/portal", req.url));
   }
 
-  // ── Admin trying to access member portal ──────────────────────────────────────
-  if (ADMIN_ROLES.includes(role) && pathname.startsWith("/portal")) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
+  // Allow Admins to access /portal for read-only viewing of Member accounts
 
   // ── Route-level RBAC ──────────────────────────────────────────────────────────
 
