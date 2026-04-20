@@ -75,16 +75,17 @@ export function adminFieldsFromFormData(fd: FormData): AdminMemberFields {
 export function validateJoinFields(f: JoinFields): string | null {
   if (!f.initials) return "Initials are required";
   if (!f.firstName) return "First name is required";
-  if (!f.lastName) return "Last name is required";
-  if (!f.address) return "Address is required";
-  if (!f.phone) return "Phone is required";
+  if (!f.email) return "Email address is required";
+  if (!f.phone) return "Phone number is required";
+  if (!f.address) return "Home address is required";
   return null;
 }
 
 export function validateAdminMemberFields(f: AdminMemberFields): string | null {
+  if (!f.initials) return "Initials are required";
   if (!f.firstName) return "First name is required";
-  if (!f.lastName) return "Last name is required";
-  if (!f.nic) return "NIC is required";
-  if (!f.phone) return "Phone is required";
+  if (!f.email) return "Email address is required";
+  if (!f.phone) return "Phone number is required";
+  if (!f.address) return "Home address is required";
   return null;
 }

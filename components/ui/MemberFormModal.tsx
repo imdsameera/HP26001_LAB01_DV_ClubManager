@@ -21,13 +21,7 @@ interface MemberFormModalProps {
   initialData?: Member | null;
 }
 
-// In a real app we'd fetch this. We'll disable these since they're already assigned.
-const ASSIGNED_ROLES: Role[] = [
-  "President",
-  "Vice President",
-  "Secretary",
-  "Treasurer",
-];
+// Assigned roles will be fetched dynamically
 
 const INITIAL_FORM = {
   initials: "",
@@ -55,8 +49,27 @@ export default function MemberFormModal({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [userRemovedAvatar, setUserRemovedAvatar] = useState(false);
+  const [assignedRoles, setAssignedRoles] = useState<Role[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditMode = !!initialData;
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch("/api/members/roles")
+        .then(r => r.json())
+        .then(d => {
+          // Exclude the current member's role from disabled roles so they can keep it
+          if (d.roles) {
+             let rolesToDisable = d.roles;
+             if (initialData?.role) {
+                 rolesToDisable = rolesToDisable.filter((r: string) => r !== initialData.role);
+             }
+             setAssignedRoles(rolesToDisable);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isOpen, initialData]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- initialize form when modal opens */
   useEffect(() => {
@@ -202,6 +215,7 @@ export default function MemberFormModal({
                   placeholder="Initials"
                   value={form.initials}
                   onChange={handleField("initials")}
+                  required
                   className="w-24 shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
                 <input
@@ -214,10 +228,9 @@ export default function MemberFormModal({
                 />
                 <input
                   type="text"
-                  placeholder="Last Name"
+                  placeholder="Last Name (Optional)"
                   value={form.lastName}
                   onChange={handleField("lastName")}
-                  required
                   className="w-1/2 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -232,7 +245,7 @@ export default function MemberFormModal({
                 <RoleSelect
                   value={form.role}
                   onChange={(r) => setForm((prev) => ({ ...prev, role: r }))}
-                  disabledRoles={ASSIGNED_ROLES}
+                  disabledRoles={assignedRoles}
                 />
               </div>
             </div>
@@ -242,7 +255,7 @@ export default function MemberFormModal({
             {/* NIC */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <label className="w-36 shrink-0 text-sm font-medium text-slate-700">
-                NIC
+                NIC <span className="text-gray-400 font-normal text-xs">(optional)</span>
               </label>
               <div className="flex-1">
                 <input
@@ -250,7 +263,6 @@ export default function MemberFormModal({
                   placeholder="National Identity Card Number"
                   value={form.nic}
                   onChange={handleField("nic")}
-                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -267,6 +279,7 @@ export default function MemberFormModal({
                   placeholder="member@example.com"
                   value={form.email}
                   onChange={handleField("email")}
+                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -335,6 +348,7 @@ export default function MemberFormModal({
                   placeholder="Residential address"
                   value={form.address}
                   onChange={handleField("address")}
+                  required
                   rows={2}
                   className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />

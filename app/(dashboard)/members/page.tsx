@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import MemberFormModal from "@/components/ui/MemberFormModal";
 import { UserPlus, MessageCircle, ChevronRight } from "lucide-react";
 import MemberDetailPanel, {
   type Member,
   type Role,
   PALETTE,
-  getInitials,
 } from "@/components/ui/MemberDetailPanel";
+import { getInitials } from "@/lib/utils/nameUtils";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -72,7 +73,11 @@ function buildMemberFormData(d: MemberFormSavePayload): FormData {
 // ---------------------------------------------------------------------------
 // Page Component (Split View)
 // ---------------------------------------------------------------------------
-export default function MembersPage() {
+function MembersPageContent() {
+  const searchParams = useSearchParams();
+  const searchId = searchParams.get("id");
+  const processedSearchRef = useRef(false);
+
   const [members, setMembers] = useState<Member[]>([]);
   const [selected, setSelected] = useState<Member | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -82,11 +87,19 @@ export default function MembersPage() {
     const list = await fetchActiveMembers();
     if (list === null) return;
     setMembers(list);
+    
+    // Auto-select based on URL or previous state
     setSelected((prev) => {
+      // If we haven't processed the deep link search param yet, do it now
+      if (searchId && !processedSearchRef.current) {
+        processedSearchRef.current = true;
+        const target = list.find(m => m.id === searchId);
+        if (target) return target;
+      }
       if (!prev) return null;
       return list.find((m) => m.id === prev.id) ?? null;
     });
-  }, []);
+  }, [searchId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +108,11 @@ export default function MembersPage() {
       if (cancelled || list === null) return;
       setMembers(list);
       setSelected((prev) => {
+        if (searchId && !processedSearchRef.current) {
+          processedSearchRef.current = true;
+          const target = list.find((m) => m.id === searchId);
+          if (target) return target;
+        }
         if (!prev) return null;
         return list.find((m) => m.id === prev.id) ?? null;
       });
@@ -102,7 +120,7 @@ export default function MembersPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchId]);
 
   return (
     // Height minus TopNav (65px) so the panel stretches exactly screen height without creating a nested scrollbar
@@ -163,7 +181,7 @@ export default function MembersPage() {
                 </thead>
 
                 <tbody className="divide-y divide-gray-100">
-                  {members.map((m) => {
+                  {(searchId ? members.filter(m => m.id === searchId) : members).map((m) => {
                     const palette = PALETTE[m.paletteIdx % PALETTE.length];
                     const isSelected = selected?.id === m.id;
 
@@ -279,9 +297,9 @@ export default function MembersPage() {
                 <p className="text-xs text-gray-400">
                   Showing{" "}
                   <span className="font-semibold text-slate-700">
-                    {members.length}
+                    {searchId ? members.filter(m => m.id === searchId).length : members.length}
                   </span>{" "}
-                  active members
+                  {searchId ? "filtered member" : "active members"}
                 </p>
               </div>
             </div>
@@ -335,5 +353,17 @@ export default function MembersPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0066FF] border-t-transparent" />
+      </div>
+    }>
+      <MembersPageContent />
+    </Suspense>
   );
 }

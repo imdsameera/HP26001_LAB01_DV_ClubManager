@@ -1,16 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  X,
-  Phone,
-  MessageCircle,
-  CreditCard,
-  Home,
-  Mail,
-  Edit2,
-  AlertTriangle
-} from "lucide-react";
+import { X, Phone, MessageCircle, CreditCard, Home, Mail, Edit2, AlertTriangle, ExternalLink, Copy, Check } from "lucide-react";
+import { getInitials } from "@/lib/utils/nameUtils";
 
 // ---------------------------------------------------------------------------
 // Shared Types & Constants
@@ -63,18 +55,6 @@ export const PALETTE = [
   { bg: "#FEE2E2", text: "#991B1B" },
 ];
 
-export function getInitials(name: string): string {
-  if (!name) return "?";
-  const str = name.trim();
-  // Simple extraction:
-  // e.g. "S. Lakshan" -> "SL"
-  // "John Doe" -> "JD"
-  const tokens = str.split(/[\s.]+/).filter(Boolean);
-  if (tokens.length === 1) return tokens[0].substring(0, 2).toUpperCase();
-  const first = tokens[0][0];
-  const second = tokens[tokens.length - 1][0];
-  return (first + (second || "")).toUpperCase() || "?";
-}
 
 const ROLE_COLOR: Record<Role, { bg: string; text: string }> = {
   "President":      { bg: "#EDE9FE", text: "#6D28D9" },
@@ -228,9 +208,6 @@ export default function MemberDetailPanel({ member, onClose, onRemove, onEdit }:
                   >
                     {member.role}
                   </span>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#0066FF] hover:underline cursor-pointer transition">
-                    <Mail size={13} /> Invite to Portal
-                  </div>
                 </div>
               </div>
               <div className="flex flex-col items-center justify-center p-6 bg-gray-50/30">

@@ -1,23 +1,52 @@
-'use client';
+"use client";
 
-import { Menu, Bell, Search } from 'lucide-react';
+import { Menu, RotateCw }               from "lucide-react";
+import { usePathname }                    from "next/navigation";
+import NotificationPanel                  from "@/components/ui/NotificationPanel";
+import ProfileDropdown                    from "@/components/ui/ProfileDropdown";
+import GlobalSearch                       from "@/components/ui/GlobalSearch";
+import type { UserRole }                  from "@/lib/models/user";
 
 interface TopNavProps {
-  /** Current page title displayed in the nav */
-  pageTitle: string;
-  /** Callback to toggle the mobile sidebar */
+  pageTitle:   string;
   onMenuToggle: () => void;
+  userName:     string;
+  userEmail:    string;
+  userRole:     UserRole;
+  userAvatar?:  string | null;
 }
 
-export default function TopNav({ pageTitle, onMenuToggle }: TopNavProps) {
+// Map route → search placeholder
+const SEARCH_PLACEHOLDERS: Record<string, string> = {
+  "/dashboard":  "Search dashboard…",
+  "/members":    "Search members…",
+  "/attendance": "Search attendance…",
+  "/events":     "Search events…",
+  "/finance":    "Search finance…",
+  "/settings":   "Search settings…",
+  "/portal":     "Search portal…",
+};
+
+function getPlaceholder(pathname: string): string {
+  for (const [prefix, label] of Object.entries(SEARCH_PLACEHOLDERS)) {
+    if (pathname.startsWith(prefix)) return label;
+  }
+  return "Search…";
+}
+
+export default function TopNav({
+  pageTitle, onMenuToggle, userName, userEmail, userRole, userAvatar,
+}: TopNavProps) {
+  const pathname     = usePathname();
+  const placeholder  = getPlaceholder(pathname);
+
   return (
     <header
       className="sticky top-0 z-10 flex h-[64px] w-full items-center justify-between gap-4 border-b border-[var(--color-border)] bg-white px-4 sm:px-6"
       aria-label="Top navigation"
     >
-      {/* ── Left: menu toggle + page title ─────────────────── */}
+      {/* ── Left: menu + title ───────────────────────────── */}
       <div className="flex items-center gap-3">
-        {/* Hamburger – visible only on mobile */}
         <button
           onClick={onMenuToggle}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)] lg:hidden"
@@ -25,45 +54,37 @@ export default function TopNav({ pageTitle, onMenuToggle }: TopNavProps) {
         >
           <Menu size={20} />
         </button>
-
-        {/* Page title */}
         <h1 className="text-[17px] font-semibold text-[var(--color-text-primary)]">
           {pageTitle}
         </h1>
       </div>
 
-      {/* ── Right: search + notifications + avatar ──────────── */}
+      {/* ── Right: search + notifications + avatar ────────── */}
       <div className="flex items-center gap-2">
-        {/* Global search (desktop only) */}
-        <div className="relative hidden sm:block">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)]"
-          />
-          <input
-            type="search"
-            placeholder="Search…"
-            className="h-9 w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-workspace-bg)] pl-9 pr-3 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] outline-none transition-colors focus:border-[var(--color-brand-primary)] focus:ring-2 focus:ring-[var(--color-brand-primary-light)]"
-          />
-        </div>
 
-        {/* Notifications */}
+        {/* Contextual search (desktop only) */}
+        <GlobalSearch placeholder={placeholder} />
+
+        {/* Refresh button */}
         <button
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)]"
-          aria-label="Notifications"
+          onClick={() => window.location.reload()}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-border)]"
+          aria-label="Refresh application"
+          title="Refresh database and UI"
         >
-          <Bell size={18} />
-          {/* Unread dot */}
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--color-brand-primary)] ring-2 ring-white" />
+          <RotateCw size={18} />
         </button>
 
-        {/* Avatar */}
-        <button
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-primary)] text-xs font-bold text-white transition-opacity hover:opacity-90"
-          aria-label="User profile"
-        >
-          AD
-        </button>
+        {/* Notification panel */}
+        <NotificationPanel />
+
+        {/* Profile dropdown */}
+        <ProfileDropdown
+          name={userName}
+          email={userEmail}
+          role={userRole}
+          avatarUrl={userAvatar}
+        />
       </div>
     </header>
   );
