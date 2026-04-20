@@ -18,7 +18,23 @@ export async function POST(request: Request) {
       avatarDataUrl = await fileToDataUrl(avatar);
     }
 
-    const result = await createPendingFromJoin(fields, avatarDataUrl);
+    // Resolve clubId (from form or fallback to first club)
+    const clubId = fd.get("clubId") as string | null;
+    let resolvedClubId = clubId;
+
+    if (!resolvedClubId) {
+      const { getDb } = await import("@/lib/db/mongodb");
+      const { DB_NAME } = await import("@/lib/models/member");
+      const { CLUBS_COLLECTION } = await import("@/lib/models/club");
+      const db = await getDb(DB_NAME);
+      const firstClub = await db.collection(CLUBS_COLLECTION).findOne({});
+      if (!firstClub) {
+        return NextResponse.json({ ok: false, error: "Club not found" }, { status: 404 });
+      }
+      resolvedClubId = firstClub._id.toString();
+    }
+
+    const result = await createPendingFromJoin(resolvedClubId, fields, avatarDataUrl);
     if (!result.ok) {
       return NextResponse.json(result, { status: 400 });
     }

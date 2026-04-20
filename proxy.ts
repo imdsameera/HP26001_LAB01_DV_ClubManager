@@ -4,7 +4,6 @@ import { NextResponse }   from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -13,6 +12,7 @@ export default auth((req) => {
   // ── Public routes — always accessible ───────────────────────────────────────
   const isPublic =
     pathname === "/login"          ||
+    pathname === "/register"       ||
     pathname.startsWith("/join")   ||
     pathname.startsWith("/verify-email");
 
@@ -30,6 +30,17 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // ── Onboarding enforcement ────────────────────────────────────────────────────
+  const status = (req.auth?.user as { status?: string } | undefined)?.status ?? "active";
+  const isOnboarding = pathname.startsWith("/onboarding");
+
+  if (status === "onboarding" && !isOnboarding) {
+    return NextResponse.redirect(new URL("/onboarding", req.url));
+  }
+  if (status === "active" && isOnboarding) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   // ── MEMBER trying to access admin area ────────────────────────────────────────

@@ -7,8 +7,8 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title:       "Hyke Youth Club — Admin",
-  description: "Youth Club Management System — Admin Panel",
+  title:       "Club Manager — Admin",
+  description: "Advanced membership and club management system.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

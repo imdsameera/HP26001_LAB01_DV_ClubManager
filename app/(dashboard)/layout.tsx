@@ -26,26 +26,32 @@ function getPageTitle(pathname: string): string {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [clubName, setClubName] = useState("Management System");
   const pathname  = usePathname();
   const pageTitle = getPageTitle(pathname);
   const { data: session } = useSession();
 
-  const fetchProfile = useCallback(async () => {
+  const fetchClubData = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/profile");
-      const data = await res.json();
-      if (data.avatarUrl) setUserAvatar(data.avatarUrl);
-      else setUserAvatar(null);
+      const [profileRes, settingsRes] = await Promise.all([
+        fetch("/api/auth/profile"),
+        fetch("/api/settings"),
+      ]);
+      const profileData = await profileRes.json();
+      const settingsData = await settingsRes.json();
+
+      if (profileData.avatarUrl) setUserAvatar(profileData.avatarUrl);
+      if (settingsData.settings?.clubName) setClubName(settingsData.settings.clubName);
     } catch (e) {
-      console.error("Failed to fetch profile info:", e);
+      console.error("Failed to fetch dashboard data:", e);
     }
   }, []);
 
   useEffect(() => {
-    fetchProfile();
-    window.addEventListener("profile-updated", fetchProfile);
-    return () => window.removeEventListener("profile-updated", fetchProfile);
-  }, [fetchProfile]);
+    fetchClubData();
+    window.addEventListener("profile-updated", fetchClubData);
+    return () => window.removeEventListener("profile-updated", fetchClubData);
+  }, [fetchClubData]);
 
   const userName  = session?.user?.name  ?? "Admin User";
   const userEmail = session?.user?.email ?? "";
@@ -60,6 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         userEmail={userEmail}
         userRole={userRole}
         userAvatar={userAvatar}
+        clubName={clubName}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden lg:ml-64">

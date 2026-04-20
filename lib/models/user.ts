@@ -22,8 +22,12 @@ export interface UserDocument {
   memberId?:     string;
   /** MongoDB ObjectId string of the linked member document */
   memberDocId?:  string;
+  /** ID of the club this user belongs to */
+  clubId:        string;
   /** Base64 data URL or external URL for the user avatar */
   avatarUrl?:    string | null;
+  /** active: can access dashboard, onboarding: must complete setup */
+  status:        "active" | "onboarding";
   isActive:      boolean;
   createdAt:     Date;
   updatedAt:     Date;

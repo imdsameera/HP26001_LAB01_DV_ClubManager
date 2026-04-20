@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { signIn }                   from "next-auth/react";
+import { Eye, EyeOff, LogIn, LogOut, ArrowRight } from "lucide-react";
 import { useRouter }                from "next/navigation";
-import { Eye, EyeOff, LogIn }       from "lucide-react";
+import Link                       from "next/link";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [tab, setTab]               = useState<"MEMBER" | "STAFF">("MEMBER");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword]     = useState("");
@@ -40,6 +42,46 @@ export default function LoginPage() {
     }
   };
 
+  if (sessionStatus === "authenticated" && session?.user) {
+    return (
+      <div className="w-full max-w-[380px]">
+        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1F2332] p-10 text-center shadow-2xl">
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+          
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
+              <LogIn size={24} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Welcome Back</h1>
+              <p className="mt-2 text-sm text-gray-400">
+                You are currently signed in as <span className="text-white font-medium">{session.user.name}</span>.
+              </p>
+            </div>
+            
+            <div className="grid w-full grid-cols-1 gap-2 mt-4">
+              <button
+                onClick={() => router.push(session.user.role === "MEMBER" ? "/portal" : "/dashboard")}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#3B82F6] py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                Go to Dashboard
+                <ArrowRight size={15} />
+              </button>
+              
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/5 py-2.5 text-sm font-semibold text-gray-400 border border-white/10 transition hover:bg-white/10 hover:text-white"
+              >
+                <LogOut size={15} />
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-[380px]">
       <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1F2332] shadow-2xl">
@@ -49,10 +91,10 @@ export default function LoginPage() {
           {/* Header/Logo */}
           <div className="mb-8 flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#3B82F6] shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-              <span className="text-lg font-bold text-white">H</span>
+              <span className="text-lg font-bold text-white">C</span>
             </div>
             <div>
-              <p className="text-sm font-bold text-white">Hyke Youth Club</p>
+              <p className="text-sm font-bold text-white">Cloud Manager</p>
               <p className="text-[11px] text-gray-400">Management System</p>
             </div>
           </div>
@@ -139,6 +181,16 @@ export default function LoginPage() {
               {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
+
+          <div className="mt-8 text-center border-t border-white/5 pt-6">
+            <Link 
+              href="/register" 
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#3B82F6] hover:text-blue-400 transition-colors"
+            >
+              Need to create a club? Register here
+              <ArrowRight size={12} />
+            </Link>
+          </div>
         </div>
       </div>
 

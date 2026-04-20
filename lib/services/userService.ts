@@ -21,17 +21,19 @@ const SALT_ROUNDS = 12;
 export async function authenticateUser(
   identifier: string,
   password: string,
-): Promise<{ id: string; email: string; name: string; role: UserRole; memberId?: string; avatarUrl?: string | null } | null> {
+): Promise<{ id: string; email: string; name: string; role: UserRole; clubId: string; status: string; memberId?: string; avatarUrl?: string | null } | null> {
   const user = await findUserByIdentifier(identifier);
   if (!user || !user.isActive) return null;
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return null;
   return {
-    id:       user._id.toString(),
-    email:    user.email,
-    name:     user.name,
-    role:     user.role,
-    memberId: user.memberId,
+    id:        user._id.toString(),
+    email:     user.email,
+    name:      user.name,
+    role:      user.role,
+    clubId:    user.clubId,
+    status:    user.status,
+    memberId:  user.memberId,
     avatarUrl: user.avatarUrl,
   };
 }
@@ -39,6 +41,7 @@ export async function authenticateUser(
 // ─── User creation ────────────────────────────────────────────────────────────
 
 export async function createAdminUser(
+  clubId:   string,
   email:    string,
   name:     string,
   role:     Exclude<UserRole, "MEMBER">,
@@ -53,11 +56,12 @@ export async function createAdminUser(
     await patchUser(email, { name, role, passwordHash: hash, isActive: true });
     return existing!._id.toString();
   }
-  const id = await createUser({ email, name, passwordHash: hash, role, isActive: true });
+  const id = await createUser({ clubId, email, name, passwordHash: hash, role, status: "active", isActive: true });
   return id.toString();
 }
 
 export async function createMemberUser(
+  clubId:      string,
   email:       string,
   name:        string,
   memberId:    string,   // HYKE-XXXX
@@ -84,12 +88,14 @@ export async function createMemberUser(
   }
 
   const id = await createUser({
+    clubId,
     email,
     name,
     passwordHash: hash,
     role:         "MEMBER",
     memberId,
     memberDocId,
+    status:       "active",
     isActive:     true,
   });
   return id.toString();

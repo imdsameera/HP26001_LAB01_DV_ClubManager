@@ -11,7 +11,7 @@ import { getInitials } from "@/lib/utils/nameUtils";
 import type { UserRole } from "@/lib/models/user";
 
 interface NavItem { label: string; href: string; icon: React.ElementType; roles: UserRole[] }
-interface SidebarProps { isOpen: boolean; onClose: () => void; userName: string; userEmail: string; userRole: UserRole; userAvatar?: string | null }
+interface SidebarProps { isOpen: boolean; onClose: () => void; userName: string; userEmail: string; userRole: UserRole; userAvatar?: string | null; clubName: string }
 
 const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",         href: "/dashboard",  icon: LayoutDashboard,  roles: ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"] },
@@ -31,7 +31,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 
-export default function Sidebar({ isOpen, onClose, userName, userEmail, userRole, userAvatar }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, userName, userEmail, userRole, userAvatar, clubName }: SidebarProps) {
   const pathname = usePathname();
   const navItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(userRole));
 
@@ -55,7 +55,7 @@ export default function Sidebar({ isOpen, onClose, userName, userEmail, userRole
       >
         {/* Header */}
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.07] px-5">
-          <span className="text-base font-bold tracking-tight text-white">Hyke Youth Club</span>
+          <span className="text-base font-bold tracking-tight text-white">{clubName}</span>
           <button onClick={onClose} className="rounded-md p-1 text-gray-400 hover:bg-white/10 hover:text-white lg:hidden">
             <X size={18} />
           </button>

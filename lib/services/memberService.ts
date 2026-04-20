@@ -25,8 +25,8 @@ import {
 import { deleteMemberAuthAccountByEmail } from "@/lib/repositories/userRepository";
 import type { AdminMemberFields, JoinFields } from "@/lib/validators/member";
 
-export async function getAssignedRoles(): Promise<MemberRole[]> {
-  return await getAssignedRolesFromDb();
+export async function getAssignedRoles(clubId: string): Promise<MemberRole[]> {
+  return await getAssignedRolesFromDb(clubId);
 }
 
 /** Mirrors UI `Member` from MemberDetailPanel (no financials from API). */
@@ -114,40 +114,41 @@ function pendingToRow(doc: MemberDocument): PendingApprovalRow {
   };
 }
 
-export async function listActiveMembersApi(): Promise<MemberApiRecord[]> {
-  const docs = await findMembersByStatus("active");
+export async function listActiveMembersApi(clubId: string): Promise<MemberApiRecord[]> {
+  const docs = await findMembersByStatus(clubId, "active");
   return docs.map(documentToMemberApi).filter((x): x is MemberApiRecord => x !== null);
 }
 
-export async function listPendingApprovals(): Promise<PendingApprovalRow[]> {
-  const docs = await findMembersByStatus("pending");
+export async function listPendingApprovals(clubId: string): Promise<PendingApprovalRow[]> {
+  const docs = await findMembersByStatus(clubId, "pending");
   return docs.map(pendingToRow);
 }
 
-export async function getDashboardStats(): Promise<{
+export async function getDashboardStats(clubId: string): Promise<{
   totalMembers: number;
   pendingApprovals: number;
 }> {
   const [totalMembers, pendingApprovals] = await Promise.all([
-    countMembersByStatus("active"),
-    countMembersByStatus("pending"),
+    countMembersByStatus(clubId, "active"),
+    countMembersByStatus(clubId, "pending"),
   ]);
   return { totalMembers, pendingApprovals };
 }
 
 export async function createPendingFromJoin(
+  clubId: string,
   fields: JoinFields,
   avatarDataUrl?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   // Check for existing credentials before proceeding
-  const duplicates = await checkExistingCredentials(fields.nic, fields.email, fields.phone);
+  const duplicates = await checkExistingCredentials(clubId, fields.nic, fields.email, fields.phone);
   if (duplicates.email) return { ok: false, error: "This email is already registered." };
   if (duplicates.nic) return { ok: false, error: "This NIC is already registered." };
   if (duplicates.phone) return { ok: false, error: "This phone number is already registered." };
 
   const now = new Date();
   const nameKey = `${fields.initials}|${fields.firstName}|${fields.lastName}|${now.getTime()}`;
-  const doc: Omit<MemberDocument, "_id"> = {
+  const doc: Omit<MemberDocument, "_id" | "clubId"> = {
     status: "pending",
     initials: fields.initials,
     firstName: fields.firstName,
@@ -164,12 +165,13 @@ export async function createPendingFromJoin(
     createdAt: now,
     updatedAt: now,
   };
-  if (avatarDataUrl) doc.avatarUrl = avatarDataUrl;
-  await insertMember(doc);
+  if (avatarDataUrl) (doc as any).avatarUrl = avatarDataUrl;
+  await insertMember(clubId, doc);
   return { ok: true };
 }
 
 export async function createActiveMember(
+  clubId: string,
   fields: AdminMemberFields,
   avatarDataUrl?: string,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -177,7 +179,7 @@ export async function createActiveMember(
   const nameKey = `${fields.initials}|${fields.firstName}|${fields.lastName}|${now.getTime()}`;
   const base: Omit<
     MemberDocument,
-    "_id" | "status" | "memberId" | "appliedAt" | "createdAt" | "updatedAt" | "joinDate"
+    "_id" | "clubId" | "status" | "memberId" | "appliedAt" | "createdAt" | "updatedAt" | "joinDate"
   > & { role: MemberRole } = {
     initials: fields.initials,
     firstName: fields.firstName,
@@ -192,8 +194,8 @@ export async function createActiveMember(
     role: fields.role,
     paletteIdx: paletteIndexFromString(nameKey),
   };
-  if (avatarDataUrl) base.avatarUrl = avatarDataUrl;
-  const id = await insertActiveMember({
+  if (avatarDataUrl) (base as any).avatarUrl = avatarDataUrl;
+  const id = await insertActiveMember(clubId, {
     ...base,
     joinDate: todayYmd(),
   });
@@ -201,16 +203,17 @@ export async function createActiveMember(
 }
 
 export async function updateActiveMember(
+  clubId: string,
   id: string,
   fields: AdminMemberFields,
   avatarDataUrl?: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const existing = await findMemberById(id);
+  const existing = await findMemberById(clubId, id);
   if (!existing || existing.status !== "active") {
     return { ok: false, error: "Member not found" };
   }
   const nameKey = `${fields.initials}|${fields.firstName}|${fields.lastName}|${existing._id.toHexString()}`;
-  const patch: Parameters<typeof updateMemberById>[1] = {
+  const patch: Parameters<typeof updateMemberById>[2] = {
     initials: fields.initials,
     firstName: fields.firstName,
     lastName: fields.lastName,
@@ -233,16 +236,16 @@ export async function updateActiveMember(
       patch.avatarUrl = avatarDataUrl;
     }
   }
-  const out = await updateMemberById(id, patch, { unsetAvatarUrl });
+  const out = await updateMemberById(clubId, id, patch, { unsetAvatarUrl });
   if (!out) return { ok: false, error: "Member not found" };
   return { ok: true };
 }
 
-export async function removeMember(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const member = await findMemberById(id);
+export async function removeMember(clubId: string, id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const member = await findMemberById(clubId, id);
   if (!member) return { ok: false, error: "Not found" };
 
-  const ok = await deleteMemberById(id);
+  const ok = await deleteMemberById(clubId, id);
   if (!ok) return { ok: false, error: "Failed to delete member" };
 
   if (member.email) {
@@ -257,28 +260,29 @@ export async function removeMember(id: string): Promise<{ ok: true } | { ok: fal
 }
 
 export async function approveMember(
+  clubId: string,
   id: string,
   role?: MemberRole,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const doc = await approvePendingMember(id, role);
+  const doc = await approvePendingMember(clubId, id, role);
   if (!doc) return { ok: false, error: "Pending application not found" };
   return { ok: true };
 }
 
-export async function getMemberApiById(id: string): Promise<MemberApiRecord | null> {
-  const doc = await findMemberById(id);
+export async function getMemberApiById(clubId: string, id: string): Promise<MemberApiRecord | null> {
+  const doc = await findMemberById(clubId, id);
   if (!doc || doc.status !== "active") return null;
   return documentToMemberApi(doc);
 }
 
-export async function getMemberApiByMemberId(memberId: string): Promise<MemberApiRecord | null> {
-  const doc = await findMemberByMemberId(memberId);
+export async function getMemberApiByMemberId(clubId: string, memberId: string): Promise<MemberApiRecord | null> {
+  const doc = await findMemberByMemberId(clubId, memberId);
   if (!doc) return null;
   return documentToMemberApi(doc);
 }
 
-export async function getMemberApiByEmail(email: string): Promise<MemberApiRecord | null> {
-  const doc = await findMemberByEmail(email);
+export async function getMemberApiByEmail(clubId: string, email: string): Promise<MemberApiRecord | null> {
+  const doc = await findMemberByEmail(clubId, email);
   if (!doc) return null;
   return documentToMemberApi(doc);
 }
