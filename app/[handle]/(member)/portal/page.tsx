@@ -123,7 +123,7 @@ export default function PortalPage() {
 
   const name = member?.name ?? session?.user?.name ?? "Member";
   const firstName = getGreetingName(name);
-  const memberId = member?.memberId ?? session?.user?.memberId ?? "HYKE-???";
+  const memberId = member?.memberId ?? session?.user?.memberId ?? "M-???";
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-10">

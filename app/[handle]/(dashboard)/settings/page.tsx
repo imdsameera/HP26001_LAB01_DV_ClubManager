@@ -21,7 +21,9 @@ import {
   Search,
   ChevronDown,
   Check,
+  Share2,
 } from "lucide-react";
+import { clsx } from "clsx";
 import type { ClubSettings } from "@/lib/services/settingsService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -215,13 +217,24 @@ function GeneralProfileTab({
   nextMemberId,
   onSettingsChange,
   onHandleChange,
+  handleAvailable,
+  checkingHandle,
 }: {
   settings: ClubSettings;
   handle: string;
   nextMemberId: string;
   onSettingsChange: (s: Partial<ClubSettings>) => void;
   onHandleChange: (h: string) => void;
+  handleAvailable: boolean | null;
+  checkingHandle: boolean;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`https://teamnode.app/${settings.slug || handle}/join`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   const cleanHandle = (val: string) =>
     val.toLowerCase().replace(/[^a-z0-0]/g, "");
 
@@ -246,21 +259,59 @@ function GeneralProfileTab({
           />
         </FieldRow>
         <FieldRow label="Club Handle (URL)">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 select-none">
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 text-sm">
               teamnode.app/
-            </span>
+            </div>
             <input
-              className={INPUT_CLS}
+              className={`${INPUT_CLS} pl-[130px] pr-10`}
               value={handle}
               onChange={(e) => onHandleChange(cleanHandle(e.target.value))}
-              placeholder="myclub"
+              placeholder="my-club"
             />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+              {checkingHandle ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-[#0066FF]" />
+              ) : handle && (
+                handleAvailable === true ? <Check size={14} className="text-emerald-500" /> : 
+                handleAvailable === false ? <X size={14} className="text-red-500" /> : null
+              )}
+            </div>
           </div>
           <p className="mt-1.5 text-[11px] text-gray-400">
-            {" "}
-            This is your public URL identifier. Strictly lowercase alphanumeric.
+            This is your public URL identifier. Strictly lowercase alphanumeric and hyphens.
           </p>
+        </FieldRow>
+      </Card>
+
+      <Card
+        title="Public Access"
+        description="Share this link with prospective members to join your club."
+      >
+        <FieldRow label="Public Join Link">
+           <div className="flex items-center gap-2">
+             <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 font-mono truncate">
+               https://teamnode.app/{settings.slug || handle}/join
+             </div>
+             <button 
+                onClick={handleCopy}
+                className={clsx(
+                   "flex h-9 min-w-[100px] items-center justify-center gap-1.5 rounded-lg border transition-all duration-200 text-xs font-semibold px-3 active:scale-95",
+                   copied 
+                     ? "bg-emerald-50 border-emerald-200 text-emerald-600" 
+                     : "bg-white border-gray-200 text-slate-700 hover:bg-gray-50 hover:border-gray-300"
+                )}
+              >
+                {copied ? (
+                  <>
+                    <Check size={14} />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  "Copy Link"
+                )}
+              </button>
+           </div>
         </FieldRow>
       </Card>
 
@@ -874,7 +925,7 @@ function AdminAccessTab({ onChange }: { onChange: () => void }) {
                             setForm((p) => ({ ...p, email: e.target.value }))
                           }
                           className={INPUT_CLS}
-                          placeholder="jane@hyke.lk"
+                          placeholder="jane@teamnode.app"
                         />
                       </div>
                     </>
@@ -1114,14 +1165,14 @@ function EmailsTab({
       {/* ── 1. Sender Display Name (functional) ── */}
       <Card
         title="Sender Display Name"
-        description='The name recipients see in their inbox as the "From" name, e.g. "Hyke Youth Club".'
+        description='The name recipients see in their inbox as the "From" name, e.g. "Teamnode Youth Club".'
       >
         <FieldRow label="Display Name">
           <input
             className={INPUT_CLS}
             value={settings.senderName}
             onChange={(e) => onSettingsChange({ senderName: e.target.value })}
-            placeholder="Hyke Youth Club"
+            placeholder="Teamnode Youth Club"
           />
         </FieldRow>
         <p className="mt-1 text-[11px] text-gray-400 pl-[208px]">
@@ -1452,6 +1503,8 @@ function SettingsPageContent() {
   const [saving, setSaving] = useState(false);
   const [handle, setHandle] = useState("");
   const [handleSaved, setHandleSaved] = useState("");
+  const [handleAvailable, setHandleAvailable] = useState<boolean | null>(null);
+  const [checkingHandle, setCheckingHandle] = useState(false);
   const memberIdPreview = `${current.memberIdPrefix || "M"}001`;
 
   // non-email-tab dirty flag
@@ -1460,7 +1513,34 @@ function SettingsPageContent() {
   const dirty =
     looseDirty ||
     !deepEqual(current, savedRef.current) ||
-    handle !== handleSaved;
+    (handle !== handleSaved && handleAvailable === true);
+
+  // Handle availability check
+  useEffect(() => {
+    if (handle === handleSaved) {
+      setHandleAvailable(true);
+      return;
+    }
+    if (!handle || handle.length < 3) {
+      setHandleAvailable(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setCheckingHandle(true);
+      try {
+        const res = await fetch(`/api/clubs/check-handle?handle=${handle}`);
+        const data = await res.json();
+        setHandleAvailable(data.available);
+      } catch {
+        setHandleAvailable(false);
+      } finally {
+        setCheckingHandle(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [handle, handleSaved]);
 
   // Load settings
   const loadSettings = useCallback(async () => {
@@ -1499,6 +1579,8 @@ function SettingsPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...current, handle }),
       });
+      const needsRedirect = handle !== handleSaved;
+      
       const data: { settings?: ClubSettings; handle?: string } =
         await res.json();
       const next = { ...DEFAULT_SETTINGS, ...(data.settings ?? current) };
@@ -1508,6 +1590,16 @@ function SettingsPageContent() {
       setHandle(data.handle ?? handle);
       setHandleSaved(data.handle ?? handle);
       setLooseDirty(false);
+
+      if (needsRedirect) {
+        const newHandle = data.handle ?? handle;
+        // Update session then redirect
+        const { update } = session as any;
+        if (update) {
+          await update({ slug: newHandle });
+        }
+        window.location.href = `/${newHandle}/settings?tab=general`;
+      }
     } catch (e) {
       console.error("Failed to save settings", e);
     } finally {
@@ -1528,15 +1620,6 @@ function SettingsPageContent() {
     <div className="-m-4 sm:-m-6 lg:-m-8 flex h-[calc(100vh-64px)] overflow-hidden">
       {/* ── Inner Sidebar ─────────────────────────────── */}
       <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white md:flex">
-        <div className="border-b border-gray-100 px-5 py-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-            Settings
-          </p>
-          <p className="mt-1 text-sm font-bold text-slate-800">
-            {current.clubName || "Settings"}
-          </p>
-          <p className="text-xs text-gray-500">Core Configuration</p>
-        </div>
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           {filteredGroups.map((group) => (
             <div key={group.label} className="mb-6 last:mb-0">
@@ -1602,6 +1685,8 @@ function SettingsPageContent() {
                     nextMemberId={memberIdPreview}
                     onSettingsChange={handleSettingsChange}
                     onHandleChange={setHandle}
+                    handleAvailable={handleAvailable}
+                    checkingHandle={checkingHandle}
                   />
                 )}
                 {activeTab === "admin-access" && (

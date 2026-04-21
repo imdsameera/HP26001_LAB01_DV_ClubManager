@@ -73,7 +73,7 @@ export async function POST(_request: Request, context: RouteContext) {
           email:      doc.email,
           password:   tempPassword,
           loginUrl,
-          clubName:   settings.senderName || "Hyke Youth Club",
+          clubName:   settings.senderName || "Teamnode Youth Club",
         });
         await sendEmail({ to: doc.email, ...template });
         console.info(`[approve] Welcome + credentials email sent to ${doc.email}`);

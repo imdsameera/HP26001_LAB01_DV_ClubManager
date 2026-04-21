@@ -29,11 +29,20 @@ export async function POST(req: Request) {
 
     // 2. Update Club details
     const clubColl = db.collection(CLUBS_COLLECTION);
+    const slug = club.handle?.trim().toLowerCase();
+
+    // Verify slug uniqueness one last time
+    const existing = await clubColl.findOne({ slug, _id: { $ne: new ObjectId(clubId) } });
+    if (existing) {
+      return NextResponse.json({ error: "Club handle is already taken." }, { status: 400 });
+    }
+
     await clubColl.updateOne(
       { _id: new ObjectId(clubId) },
       { 
         $set: { 
           name:         club.name.trim(), 
+          slug:         slug,
           isOnboarded:  true,
           updatedAt:    now 
         } 

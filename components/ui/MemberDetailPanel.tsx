@@ -31,6 +31,7 @@ export interface MemberFinancials {
 
 export interface Member {
   id: string;
+  clubId: string;
   name: string;
   avatarUrl?: string;
   memberId: string;
@@ -213,7 +214,7 @@ export default function MemberDetailPanel({ member, onClose, onRemove, onEdit }:
               <div className="flex flex-col items-center justify-center p-6 bg-gray-50/30">
                 <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Digital ID</p>
                 <div className="rounded-xl border border-gray-100 p-2 shadow-sm bg-white">
-                  <QRCode value={member.memberId} size={70} />
+                  <QRCode value={`${member.clubId}:${member.memberId}`} size={70} />
                 </div>
                 <p className="mt-2 text-xs font-mono font-medium text-slate-600">{member.memberId}</p>
               </div>

@@ -13,7 +13,7 @@ export function passwordChanged(opts: PasswordChangedOpts): EmailTemplate {
     timeStyle: "short",
   });
 
-  const subject = "Your Hyke Club Manager password was changed";
+  const subject = "Your Teamnode Club Manager password was changed";
 
   const text = `Hi ${userName},
 
@@ -23,7 +23,7 @@ If you made this change, no further action is required.
 
 If you did NOT make this change, please contact your Super Admin immediately.
 
-Hyke Club Manager Security Team`;
+Teamnode Club Manager Security Team`;
 
   const html = buildHtml({
     previewText: "Your password has been changed successfully.",
@@ -38,7 +38,7 @@ Hyke Club Manager Security Team`;
         </td></tr>
       </table>
     `,
-    footerNote: "Hyke Club Manager Security — this is an automated security notification.",
+    footerNote: "Teamnode Club Manager Security — this is an automated security notification.",
     accentColor: "#0f766e",
   });
 

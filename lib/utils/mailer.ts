@@ -23,7 +23,7 @@ function buildTransport() {
 }
 
 function getSystemFrom(): string {
-  const name = process.env.EMAIL_FROM_NAME ?? "Hyke Club Manager";
+  const name = process.env.EMAIL_FROM_NAME ?? "Teamnode Club Admin";
   const addr = process.env.EMAIL_USER ?? "";
   return addr ? `"${name}" <${addr}>` : name;
 }
@@ -72,8 +72,8 @@ function buildHtml(options: {
               <td style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:8px;
                          text-align:center;line-height:36px;font-size:18px;font-weight:900;color:#fff">H</td>
               <td style="padding-left:12px">
-                <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff">Hyke Youth Club</p>
-                <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Club Management System</p>
+                <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff">Teamnode</p>
+                <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Management System</p>
               </td>
             </tr></table>
           </td>
@@ -102,7 +102,7 @@ function buildHtml(options: {
         <!-- Footer -->
         <tr>
           <td style="padding:20px 32px;font-size:12px;color:#94a3b8;line-height:1.6">
-            ${footerNote ?? "This email was sent automatically by Hyke Youth Club's management system. Please do not reply to this message."}
+            ${footerNote ?? "This email was sent automatically by Teamnode. Please do not reply to this message."}
           </td>
         </tr>
 
@@ -110,7 +110,7 @@ function buildHtml(options: {
 
       <!-- Bottom spacer brand -->
       <p style="margin:20px 0 0;font-size:11px;color:#cbd5e1">
-        Hyke Youth Club &mdash; Powered by Hyke Global
+        Teamnode &mdash; Powered by teamnode.app
       </p>
     </td></tr>
   </table>
@@ -179,15 +179,15 @@ export async function sendVerificationEmail(
   toEmail: string,
   verifyUrl: string,
 ): Promise<void> {
-  const subject = "Verify your sender email address — Hyke Club Manager";
-  const plain   = `Hi,\n\nPlease verify your sender email address for Hyke Youth Club's management system.\n\nClick the link below to verify:\n${verifyUrl}\n\nThis link expires in 24 hours. If you did not request this, you can safely ignore this email.\n\nBest regards,\nHyke Club Manager`;
+  const subject = "Verify your sender email address — Teamnode";
+  const plain   = `Hi,\n\nPlease verify your sender email address for your Teamnode management system.\n\nClick the link below to verify:\n${verifyUrl}\n\nThis link expires in 24 hours. If you did not request this, you can safely ignore this email.\n\nBest regards,\nTeamnode Admin`;
 
   const html = buildHtml({
     previewText: "Verify your sender email to start sending member emails.",
     heading:     "Verify Your Email Address",
     bodyHtml: `
       <p>You (or an admin) requested to use <strong>${toEmail}</strong> as the
-         sender address for outgoing member emails in Hyke Youth Club.</p>
+         sender address for outgoing system emails.</p>
       <p>Click the button below to confirm this address. The link is valid for
          <strong>24 hours</strong>.</p>
       <p style="font-size:13px;color:#64748b">
@@ -196,7 +196,7 @@ export async function sendVerificationEmail(
       </p>`,
     ctaLabel:   "Verify Email Address",
     ctaUrl:     verifyUrl,
-    footerNote: `This verification was requested for the Hyke Club Manager. Link expires in 24 hours.`,
+    footerNote: `This verification was requested for Teamnode. Link expires in 24 hours.`,
   });
 
   await send({ to: toEmail, subject, text: plain, html });
@@ -236,7 +236,7 @@ export async function sendWelcomeEmail(
   const plainText = interpolate(settings.welcomeTemplate, vars);
 
   const html = buildHtml({
-    previewText: `Welcome to Hyke Youth Club, ${member.firstName}!`,
+    previewText: `Welcome to the team, ${member.firstName}!`,
     heading:     interpolate("Welcome, {{first_name}}! 🎉", vars),
     bodyHtml:    textToHtml(plainText),
     footerNote:  `Your membership is now active. Member ID: ${member.memberId}`,

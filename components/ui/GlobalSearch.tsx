@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, ChevronRight, Settings } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { getInitials } from "@/lib/utils/nameUtils";
 
 // Hardcoded settings map
@@ -20,6 +21,8 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const { data: session } = useSession();
+  const slug = (session?.user as any)?.slug;
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [dynamicMembers, setDynamicMembers] = useState<any[]>([]);
@@ -56,7 +59,7 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
 
   // Pre-fetch contexts
   useEffect(() => {
-    if (pathname.startsWith("/members")) {
+    if (slug && pathname.includes(`/${slug}/members`)) {
       fetch("/api/members?status=active")
         .then(res => res.json())
         .then(data => {
@@ -72,7 +75,7 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
     const lowerQuery = query.toLowerCase();
 
     // Context: Settings
-    if (pathname.startsWith("/settings")) {
+    if (slug && pathname.includes(`/${slug}/settings`)) {
       const results = SETTINGS_TABS.filter(
         t => t.label.toLowerCase().includes(lowerQuery) || t.desc.toLowerCase().includes(lowerQuery)
       );
@@ -84,7 +87,7 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
           onClick={() => {
             setIsFocused(false);
             setQuery("");
-            router.push(`/settings?tab=${t.id}`);
+            router.push(`/${slug}/settings?tab=${t.id}`);
           }}
           className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition hover:bg-gray-50 active:bg-gray-100 border-b border-gray-50 last:border-0"
         >
@@ -101,7 +104,7 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
     }
 
     // Context: Members
-    if (pathname.startsWith("/members")) {
+    if (slug && pathname.includes(`/${slug}/members`)) {
       const results = dynamicMembers.filter(
         m => m.name.toLowerCase().includes(lowerQuery) || 
              m.email?.toLowerCase().includes(lowerQuery) || 
@@ -115,7 +118,7 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
           onClick={() => {
             setIsFocused(false);
             setQuery("");
-            router.push(`/members?id=${m.id}`);
+            router.push(`/${slug}/members?id=${m.id}`);
           }}
           className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition hover:bg-gray-50 active:bg-gray-100 border-b border-gray-50 last:border-0"
         >
@@ -134,17 +137,17 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
     // This covers Dashboard, Finance, Attendance, Events, and any future pages.
     // It also surfaces Settings sub-tabs so users can jump anywhere from any page.
     const NAV_ITEMS = [
-      { label: "Dashboard",        desc: "Overview and analytics",               path: "/dashboard",                  icon: "grid" },
-      { label: "Members",          desc: "Manage club members",                  path: "/members",                    icon: "users" },
-      { label: "Attendance",       desc: "Track member attendance",              path: "/attendance",                  icon: "check" },
-      { label: "Events",           desc: "Manage club events",                   path: "/events",                     icon: "calendar" },
-      { label: "Finance",          desc: "Income, expenses and reports",         path: "/finance",                    icon: "dollar" },
-      { label: "Settings",         desc: "General club configuration",           path: "/settings",                   icon: "settings" },
+      { label: "Dashboard",        desc: "Overview and analytics",               path: `/${slug}/dashboard`,                  icon: "grid" },
+      { label: "Members",          desc: "Manage club members",                  path: `/${slug}/members`,                    icon: "users" },
+      { label: "Attendance",       desc: "Track member attendance",              path: `/${slug}/attendance`,                  icon: "check" },
+      { label: "Events",           desc: "Manage club events",                   path: `/${slug}/events`,                     icon: "calendar" },
+      { label: "Finance",          desc: "Income, expenses and reports",         path: `/${slug}/finance`,                    icon: "dollar" },
+      { label: "Settings",         desc: "General club configuration",           path: `/${slug}/settings`,                   icon: "settings" },
       // Settings sub-tabs (accessible from anywhere)
       ...SETTINGS_TABS.map(t => ({
         label: t.label,
         desc: t.desc,
-        path: `/settings?tab=${t.id}`,
+        path: `/${slug}/settings?tab=${t.id}`,
         icon: "settings" as const,
       })),
     ];
@@ -201,8 +204,8 @@ export default function GlobalSearch({ placeholder }: { placeholder: string }) {
           onClick={() => {
             setQuery("");
             searchRef.current?.focus();
-            if (pathname.startsWith("/members")) {
-              router.push("/members"); // clear filter
+            if (slug && pathname.includes(`/${slug}/members`)) {
+              router.push(`/${slug}/members`); // clear filter
             }
           }}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-800 transition-colors"

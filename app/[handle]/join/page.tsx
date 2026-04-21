@@ -26,7 +26,7 @@ const INITIAL_FORM = {
   address: "",
 };
 
-export default function JoinPage() {
+export default function JoinPage({ params }: { params: Promise<{ handle: string }> }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -112,7 +112,13 @@ export default function JoinPage() {
     setFormError(null);
     setIsSubmitting(true);
     try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryClubId = searchParams.get("clubId");
+
       const fd = new FormData();
+      const { handle } = await params;
+      if (handle) fd.append("handle", handle);
+      if (queryClubId) fd.append("clubId", queryClubId);
       fd.append("initials", form.initials);
       fd.append("firstName", form.firstName);
       fd.append("lastName", form.lastName);
@@ -124,6 +130,7 @@ export default function JoinPage() {
       fd.append("whatsapp", form.whatsapp);
       fd.append("address", form.address);
       if (avatarFile) fd.append("avatar", avatarFile);
+      if (queryClubId) fd.append("clubId", queryClubId);
 
       const res = await fetch("/api/members/join", {
         method: "POST",
@@ -134,7 +141,8 @@ export default function JoinPage() {
         setFormError(typeof body.error === "string" ? body.error : "Could not submit application. Please check your credentials and try again.");
         return;
       }
-      router.push("/join/pending");
+      
+      router.push(`/${handle}/join/pending`);
     } finally {
       setIsSubmitting(false);
     }

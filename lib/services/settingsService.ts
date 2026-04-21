@@ -40,14 +40,14 @@ export interface SettingsDoc extends ClubSettings {
 export const DEFAULT_SETTINGS: ClubSettings = {
   senderEmail:        "",
   senderEmailPending: undefined,
-  senderName:         "Organisation Administrator",
+  senderName:         "Organisation Admin",
   newMemberAlerts:    true,
   welcomeTemplate:    `Hi {{first_name}},\n\nWelcome to our club! Your membership application has been approved.\n\nYour Member ID is: {{member_id}}\n\nWe're excited to have you on board.\n\nBest regards,\nThe Team`,
   welcomeSubject:     "Welcome to the Club! 🎉",
   paymentReminders:   false,
   weeklyDigest:       true,
 
-  clubName:           "My Youth Club",
+  clubName:           "",
   tagline:            "",
   publicEmail:        "",
   phoneNumber:        "",

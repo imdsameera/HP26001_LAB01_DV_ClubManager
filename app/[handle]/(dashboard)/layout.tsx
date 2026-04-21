@@ -8,7 +8,7 @@ import TopNav             from "@/components/layout/TopNav";
 import type { UserRole }  from "@/lib/models/user";
 
 const PAGE_TITLES: Record<string, string> = {
-  "/dashboard":  "Dashboard",
+  "/":           "Dashboard",
   "/members":    "Members",
   "/attendance": "Attendance",
   "/events":     "Events & Calendar",
@@ -16,9 +16,13 @@ const PAGE_TITLES: Record<string, string> = {
   "/settings":   "Settings",
 };
 
-function getPageTitle(pathname: string): string {
+function getPageTitle(pathname: string, slug?: string): string {
+  // Strip the /[slug] prefix if it exists to match the keys
+  const normalizedPath = slug ? (pathname.replace(`/${slug}`, "") || "/") : pathname;
+  const path = normalizedPath;
+
   for (const [prefix, title] of Object.entries(PAGE_TITLES)) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) return title;
+    if (path === prefix || path.startsWith(prefix + "/")) return title;
   }
   return "Dashboard";
 }
@@ -28,8 +32,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [clubName, setClubName] = useState("Management System");
   const pathname  = usePathname();
-  const pageTitle = getPageTitle(pathname);
   const { data: session } = useSession();
+  const slug = (session?.user as any)?.slug;
+  const pageTitle = getPageTitle(pathname, slug);
 
   const fetchClubData = useCallback(async () => {
     try {
@@ -67,6 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         userRole={userRole}
         userAvatar={userAvatar}
         clubName={clubName}
+        clubSlug={slug ?? ""}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden lg:ml-64">

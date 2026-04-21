@@ -1,7 +1,9 @@
+"use client";
+
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
-export default function JoinPendingPage() {
+export default function JoinPendingPage({ params }: { params: Promise<{ handle: string }> }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F8FAFC] px-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 sm:p-10 text-center shadow-2xl shadow-slate-200/50 border border-gray-100 flex flex-col items-center animate-in fade-in zoom-in duration-300">
@@ -32,12 +34,15 @@ export default function JoinPendingPage() {
       </div>
 
       <div className="mt-8 pt-6 border-t border-gray-100 w-full">
-        <Link
-          href="/join"
+        <button
+          onClick={async () => {
+            const { handle } = await params;
+            window.location.href = `/${handle}/join`;
+          }}
           className="inline-flex items-center text-sm font-medium text-[#0066FF] hover:text-blue-700 hover:opacity-80 transition active:scale-95 cursor-pointer"
         >
           ← Back to Join Page
-        </Link>
+        </button>
       </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ export interface UserDocument {
   name:          string;
   passwordHash:  string;
   role:          UserRole;
-  /** HYKE-XXXX club member ID — only for MEMBER role */
+  /** M001 club member ID — only for MEMBER role */
   memberId?:     string;
   /** MongoDB ObjectId string of the linked member document */
   memberDocId?:  string;

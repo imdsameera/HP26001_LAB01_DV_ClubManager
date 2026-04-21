@@ -11,6 +11,12 @@ async function col() {
   return db.collection<ClubDocument>(CLUBS_COLLECTION);
 }
 
+/** Ensure unique index on slug for multi-tenant routing */
+export async function ensureClubIndexes() {
+  const c = await col();
+  await c.createIndex({ slug: 1 }, { unique: true, sparse: true });
+}
+
 export async function findClubById(id: string): Promise<ClubDocument | null> {
   if (!ObjectId.isValid(id)) return null;
   const c = await col();
@@ -19,12 +25,22 @@ export async function findClubById(id: string): Promise<ClubDocument | null> {
 
 export async function findClubBySlug(slug: string): Promise<ClubDocument | null> {
   const c = await col();
-  return c.findOne({ slug: slug.toLowerCase().trim() });
+  const normalized = slug.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  // Create a regex that allows optional hyphens between any characters
+  // e.g. "hyketestclub" -> /^h-?y-?k-?e-?t-?e-?s-?t-?c-?l-?u-?b-?$/i
+  const regexPattern = "^" + normalized.split("").join("-?") + "-?$";
+  
+  const club = await c.findOne({
+    slug: { $regex: new RegExp(regexPattern, "i") }
+  });
+  
+  return club;
 }
 
 export async function updateClubSlug(clubId: string, slug: string): Promise<{ ok: boolean; error?: string }> {
   const c = await col();
-  const cleanedSlug = slug.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const cleanedSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, "");
   
   if (!cleanedSlug) return { ok: false, error: "Invalid handle." };
 

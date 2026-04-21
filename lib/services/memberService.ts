@@ -165,8 +165,22 @@ export async function createPendingFromJoin(
     createdAt: now,
     updatedAt: now,
   };
-  if (avatarDataUrl) (doc as any).avatarUrl = avatarDataUrl;
-  await insertMember(clubId, doc);
+  const insertedId = await insertMember(clubId, doc);
+
+  // Trigger notification for admins
+  try {
+    const { createNotification } = await import("@/lib/services/notificationService");
+    await createNotification(
+      clubId,
+      "new_applicant",
+      "New Membership Application",
+      `${fields.firstName} ${fields.lastName} has applied to join.`,
+      { applicantId: insertedId.toHexString() },
+    );
+  } catch (err) {
+    console.error("[createPendingFromJoin] Failed to create notification:", err);
+  }
+
   return { ok: true };
 }
 

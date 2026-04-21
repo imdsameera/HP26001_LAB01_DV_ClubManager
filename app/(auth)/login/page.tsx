@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn, LogOut, ArrowRight } from "lucide-react";
 import { useRouter }                from "next/navigation";
 import Link                       from "next/link";
@@ -36,79 +36,82 @@ export default function LoginPage() {
       if (tab === "MEMBER") {
         router.push("/portal");
       } else {
-        router.push("/dashboard");
+        router.push("/");
       }
       router.refresh();
     }
   };
 
+  // Automatic sign-out if session user doesn't exist in DB (e.g. after a flush)
+  useEffect(() => {
+    if (sessionStatus === "authenticated" && session?.user?.email) {
+      const verifySession = async () => {
+        try {
+          const res = await fetch("/api/auth/profile");
+          if (res.status === 404) {
+            // User record is gone, clear the stale session
+            console.warn("Session user not found in database. Signing out...");
+            await signOut({ redirect: false });
+            router.refresh();
+          }
+        } catch (error) {
+          console.error("Session verification failed", error);
+        }
+      };
+      verifySession();
+    }
+  }, [sessionStatus, session, router]);
+
+  // Automatic Redirection for Authenticated Users
+  useEffect(() => {
+    if (sessionStatus === "authenticated" && session?.user && !loading) {
+      const userSlug = (session.user as any).slug;
+      if (session.user.role === "MEMBER") {
+        router.push(userSlug ? `/${userSlug}/portal` : "/portal");
+      } else {
+        router.push(userSlug ? `/${userSlug}` : "/register?setup=true");
+      }
+    }
+  }, [sessionStatus, session, router, loading]);
+
   if (sessionStatus === "authenticated" && session?.user) {
     return (
-      <div className="w-full max-w-[380px]">
-        <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1F2332] p-10 text-center shadow-2xl">
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-          
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
-              <LogIn size={24} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Welcome Back</h1>
-              <p className="mt-2 text-sm text-gray-400">
-                You are currently signed in as <span className="text-white font-medium">{session.user.name}</span>.
-              </p>
-            </div>
-            
-            <div className="grid w-full grid-cols-1 gap-2 mt-4">
-              <button
-                onClick={() => router.push(session.user.role === "MEMBER" ? "/portal" : "/dashboard")}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#3B82F6] py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500"
-              >
-                Go to Dashboard
-                <ArrowRight size={15} />
-              </button>
-              
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/5 py-2.5 text-sm font-semibold text-gray-400 border border-white/10 transition hover:bg-white/10 hover:text-white"
-              >
-                <LogOut size={15} />
-                Sign Out
-              </button>
-            </div>
-          </div>
+      <div className="flex flex-col items-center gap-6 p-10 animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner">
+          <span className="h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
         </div>
+        <p className="text-lg font-bold text-slate-900">Redirecting to Dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-[380px]">
-      <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1F2332] shadow-2xl">
-        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+    <div className="w-full max-w-[400px] animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_30px_60px_rgba(0,0,0,0.08)]">
+        <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-blue-600 to-indigo-600" />
         
-        <div className="p-8">
+        <div className="p-10">
           {/* Header/Logo */}
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#3B82F6] shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-              <span className="text-lg font-bold text-white">C</span>
+          <div className="mb-10 flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-xl shadow-blue-600/20">
+              <span className="text-xl font-black text-white">T</span>
             </div>
             <div>
-              <p className="text-sm font-bold text-white">Cloud Manager</p>
-              <p className="text-[11px] text-gray-400">Management System</p>
+              <p className="text-[17px] font-bold text-slate-900 leading-tight">Teamnode</p>
+              <p className="text-xs font-medium text-slate-400">Management System</p>
             </div>
           </div>
 
-          <h1 className="text-xl font-bold text-white">Sign in</h1>
-          <p className="mt-1 text-sm text-gray-400">Enter your credentials to continue.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Sign in</h1>
+          <p className="mt-2 text-[15px] font-medium text-slate-500">Enter your credentials to continue access.</p>
 
           {/* Tabs */}
-          <div className="mt-6 flex rounded-lg bg-black/20 p-1">
+          <div className="mt-8 flex rounded-xl bg-slate-50 p-1.5 border border-slate-100">
             <button
               type="button"
               onClick={() => { setTab("MEMBER"); setError(""); setIdentifier(""); setPassword(""); }}
-              className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
-                tab === "MEMBER" ? "bg-[#3B82F6] text-white shadow" : "text-gray-400 hover:text-white"
+              className={`flex-1 rounded-lg py-2.5 text-[13px] font-bold tracking-wide uppercase transition-all ${
+                tab === "MEMBER" ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
               }`}
             >
               Member
@@ -116,8 +119,8 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setTab("STAFF"); setError(""); setIdentifier(""); setPassword(""); }}
-              className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
-                tab === "STAFF" ? "bg-[#3B82F6] text-white shadow" : "text-gray-400 hover:text-white"
+              className={`flex-1 rounded-lg py-2.5 text-[13px] font-bold tracking-wide uppercase transition-all ${
+                tab === "STAFF" ? "bg-white text-blue-600 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
               }`}
             >
               Staff
@@ -125,28 +128,28 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="mt-5 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-center text-xs text-red-400">
+            <div className="mt-6 rounded-xl border border-red-100 bg-red-50 p-4 text-center text-xs font-semibold text-red-500">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-400">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            <div className="space-y-2">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 pl-1">
                 {tab === "MEMBER" ? "Member ID" : "Email Address"}
               </label>
               <input
                 type={tab === "MEMBER" ? "text" : "email"}
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
-                placeholder={tab === "MEMBER" ? "e.g. HYKE-0001" : "admin@hyke.lk"}
+                placeholder={tab === "MEMBER" ? "e.g. M001" : "admin@teamnode.app"}
                 autoComplete={tab === "MEMBER" ? "username" : "email"}
-                className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none transition focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-[15px] font-medium text-slate-900 placeholder:text-slate-300 outline-none transition focus:border-blue-600/30 focus:ring-4 focus:ring-blue-600/5 focus:bg-white"
               />
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-400">
+            <div className="space-y-2">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 pl-1">
                 Password
               </label>
               <div className="relative">
@@ -156,14 +159,14 @@ export default function LoginPage() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 pr-10 text-sm text-white placeholder:text-gray-600 outline-none transition focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 pr-12 text-[15px] font-medium text-slate-900 placeholder:text-slate-300 outline-none transition focus:border-blue-600/30 focus:ring-4 focus:ring-blue-600/5 focus:bg-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                 >
-                  {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
@@ -171,31 +174,32 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[#3B82F6] py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
+              className="group relative flex w-full items-center justify-center gap-2.5 rounded-xl bg-blue-600 py-4.5 text-[15px] font-bold text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               ) : (
-                <LogIn size={15} />
+                <LogIn size={18} />
               )}
-              {loading ? "Signing in…" : "Sign In"}
+              {loading ? "Verifying..." : "Sign In to Workspace"}
+              <div className="absolute inset-0 rounded-xl transition group-hover:bg-white/5 pointer-events-none" />
             </button>
           </form>
 
-          <div className="mt-8 text-center border-t border-white/5 pt-6">
+          <div className="mt-10 text-center border-t border-slate-50 pt-8">
             <Link 
               href="/register" 
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#3B82F6] hover:text-blue-400 transition-colors"
+              className="inline-flex items-center gap-2 text-[13px] font-bold text-blue-600 hover:text-blue-800 transition-colors"
             >
-              Need to create a club? Register here
-              <ArrowRight size={12} />
+              Establishing a new club? Register
+              <ArrowRight size={16} />
             </Link>
           </div>
         </div>
       </div>
 
-      <p className="mt-6 text-center text-xs text-gray-500">
-        For member access, use the credentials from your approval email.
+      <p className="mt-8 text-center text-xs font-medium text-slate-400">
+        Member access requires credentials provided during registration approval.
       </p>
     </div>
   );

@@ -21,17 +21,21 @@ const SALT_ROUNDS = 12;
 export async function authenticateUser(
   identifier: string,
   password: string,
-): Promise<{ id: string; email: string; name: string; role: UserRole; clubId: string; status: string; memberId?: string; avatarUrl?: string | null } | null> {
+): Promise<{ id: string; email: string; name: string; role: UserRole; clubId: string; clubSlug?: string; status: string; memberId?: string; avatarUrl?: string | null } | null> {
   const user = await findUserByIdentifier(identifier);
   if (!user || !user.isActive) return null;
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return null;
+  const { findClubById } = await import("@/lib/repositories/clubRepository");
+  const club = await findClubById(user.clubId);
+
   return {
     id:        user._id.toString(),
     email:     user.email,
     name:      user.name,
     role:      user.role,
     clubId:    user.clubId,
+    clubSlug:  club?.slug,
     status:    user.status,
     memberId:  user.memberId,
     avatarUrl: user.avatarUrl,
@@ -64,7 +68,7 @@ export async function createMemberUser(
   clubId:      string,
   email:       string,
   name:        string,
-  memberId:    string,   // HYKE-XXXX
+  memberId:    string,   // M001
   memberDocId: string,   // MongoDB ObjectId string
   password:    string,
 ): Promise<string> {
@@ -101,10 +105,10 @@ export async function createMemberUser(
   return id.toString();
 }
 
-/** Generate a human-readable temporary password, e.g. "Hyke@483920" */
+/** Generate a human-readable temporary password, e.g. "Teamnode@483920" */
 export function generateTempPassword(): string {
   const digits = Math.floor(100000 + Math.random() * 900000).toString();
-  return `Hyke@${digits}`;
+  return `Teamnode@${digits}`;
 }
 
 // ─── Password management ──────────────────────────────────────────────────────

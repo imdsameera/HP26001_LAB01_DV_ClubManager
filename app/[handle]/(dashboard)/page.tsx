@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   QrCode,
   PlusCircle,
@@ -92,7 +93,7 @@ function StatCard({
   );
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [pending, setPending] = useState<PendingRow[]>([]);
   const [totalMembers, setTotalMembers] = useState(0);
   const [selectedApplicant, setSelectedApplicant] = useState<PendingRow | null>(null);
@@ -103,18 +104,32 @@ export default function DashboardPage() {
     if (patch.pending !== undefined) setPending(patch.pending);
   }, []);
 
+  const searchParams = useSearchParams();
+  const applicantId = searchParams.get("applicantId");
+  const processedRef = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const patch = await fetchDashboardPatch();
       if (cancelled) return;
       if (patch.totalMembers !== undefined) setTotalMembers(patch.totalMembers);
-      if (patch.pending !== undefined) setPending(patch.pending);
+      
+      if (patch.pending !== undefined) {
+        setPending(patch.pending);
+        
+        // Handle deep link from notification
+        if (applicantId && !processedRef.current) {
+          processedRef.current = true;
+          const target = patch.pending.find(p => p.id === applicantId);
+          if (target) setSelectedApplicant(target);
+        }
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applicantId]);
 
   const handleApprove = async (id: string, role?: Role) => {
     const body = role ? JSON.stringify({ role }) : undefined;
@@ -257,5 +272,13 @@ export default function DashboardPage() {
         onReject={(id) => void handleReject(id)}
       />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex h-32 items-center justify-center"><p className="text-sm text-gray-400 animate-pulse">Loading dashboard...</p></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

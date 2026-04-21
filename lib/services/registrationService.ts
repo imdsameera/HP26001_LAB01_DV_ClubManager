@@ -13,10 +13,26 @@ import { ObjectId } from "mongodb";
 const SALT_ROUNDS = 12;
 
 export interface RegistrationData {
-  email:    string;
-  password: string;
-  name:     string; // Admin's name
-  clubName: string; // The club they are creating
+  email:        string;
+  password:     string;
+  name:         string; // Admin's name
+  clubName:     string; // The club they are creating
+  handle:       string; 
+  tagline?:     string;
+  headquarters?: string;
+  publicEmail?: string;
+  phoneNumber?: string;
+}
+
+export interface SetupExistingData {
+  userId:       string;
+  clubId:       string;
+  clubName:     string;
+  handle:       string;
+  tagline?:     string;
+  headquarters?: string;
+  publicEmail?: string;
+  phoneNumber?: string;
 }
 
 /**
@@ -37,16 +53,16 @@ export async function registerNewClub(data: RegistrationData): Promise<{ userId:
   // 2. Create Club
   const clubColl = db.collection<ClubDocument>(CLUBS_COLLECTION);
   const clubId = new ObjectId();
-  const slug = data.clubName
+  const slug = (data.handle || data.clubName)
     .toLowerCase()
-    .replace(/[^a-z0-0]+/g, ""); // Strictly alphanumeric, no spaces or hyphens
+    .replace(/[^a-z0-9-]+/g, ""); // Standard slugification
 
   const clubDoc: ClubDocument = {
     _id:          clubId,
     name:         data.clubName.trim(),
     slug:         slug || clubId.toString(),
     ownerId:      "", // Will update after user creation
-    isOnboarded:  false,
+    isOnboarded:  true, // Since they are doing it all now
     createdAt:    now,
     updatedAt:    now,
   };
@@ -63,7 +79,7 @@ export async function registerNewClub(data: RegistrationData): Promise<{ userId:
     passwordHash,
     role:          "SUPER_ADMIN",
     clubId:        clubId.toString(),
-    status:        "onboarding", // Forces them into onboarding flow
+    status:        "active", // Directly to active status
     isActive:      true,
     createdAt:     now,
     updatedAt:     now,
@@ -78,12 +94,69 @@ export async function registerNewClub(data: RegistrationData): Promise<{ userId:
   await settingsColl.insertOne({
     _id:        clubId.toString(), // Tenant-specific settings ID
     ...DEFAULT_SETTINGS,
-    clubName:   data.clubName.trim(),
-    senderName: data.clubName.trim(),
+    clubName:     data.clubName.trim(),
+    senderName:   data.clubName.trim(),
+    tagline:      data.tagline || "",
+    headquarters: data.headquarters || "",
+    publicEmail:  data.publicEmail || "",
+    phoneNumber:  data.phoneNumber || "",
   });
 
   return { 
     userId: userId.toString(), 
     clubId: clubId.toString() 
   };
+}
+
+/**
+ * Update an existing club during the "setup" migration flow.
+ */
+export async function setupExistingClub(data: SetupExistingData): Promise<void> {
+  const db = await getDb(DB_NAME);
+  const now = new Date();
+
+  // 1. Update Club
+  const clubColl = db.collection<ClubDocument>(CLUBS_COLLECTION);
+  const slug = data.handle.toLowerCase().replace(/[^a-z0-9-]+/g, "");
+
+  await clubColl.updateOne(
+    { _id: new ObjectId(data.clubId) },
+    {
+      $set: {
+        name: data.clubName.trim(),
+        slug,
+        isOnboarded: true,
+        updatedAt: now,
+      }
+    }
+  );
+
+  // 2. Update User
+  const userColl = db.collection<UserDocument>(USERS_COLLECTION);
+  await userColl.updateOne(
+    { _id: new ObjectId(data.userId) },
+    {
+      $set: {
+        status: "active",
+        updatedAt: now,
+      }
+    }
+  );
+
+  // 3. Update Settings
+  const settingsColl = db.collection<SettingsDoc>(SETTINGS_COLLECTION);
+  await settingsColl.updateOne(
+    { _id: data.clubId },
+    {
+      $set: {
+        clubName:     data.clubName.trim(),
+        senderName:   data.clubName.trim(),
+        tagline:      data.tagline || "",
+        headquarters: data.headquarters || "",
+        publicEmail:  data.publicEmail || "",
+        phoneNumber:  data.phoneNumber || "",
+      }
+    },
+    { upsert: true }
+  );
 }
