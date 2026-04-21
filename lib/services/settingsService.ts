@@ -4,8 +4,7 @@ import * as crypto from "node:crypto";
 import { DB_NAME } from "@/lib/models/member";
 import { getDb } from "@/lib/db/mongodb";
 
-const SETTINGS_COLLECTION = "settings";
-const SETTINGS_DOC_ID     = "global";
+export const SETTINGS_COLLECTION = "settings";
 
 // ─── Public interface (safe to send to client) ────────────────────────────────
 
@@ -25,11 +24,12 @@ export interface ClubSettings {
   publicEmail:         string;
   phoneNumber:         string;
   headquarters:        string;
+  memberIdPrefix:      string;
 }
 
 // ─── Internal DB document (includes private token fields) ────────────────────
 
-interface SettingsDoc extends ClubSettings {
+export interface SettingsDoc extends ClubSettings {
   _id: string;
   verificationToken?:       string;
   verificationTokenExpiry?: Date;
@@ -40,18 +40,19 @@ interface SettingsDoc extends ClubSettings {
 export const DEFAULT_SETTINGS: ClubSettings = {
   senderEmail:        "",
   senderEmailPending: undefined,
-  senderName:         "Hyke Youth Club",
+  senderName:         "Organisation Admin",
   newMemberAlerts:    true,
-  welcomeTemplate:    `Hi {{first_name}},\n\nWelcome to Hyke Youth Club! Your membership application has been approved.\n\nYour Member ID is: {{member_id}}\n\nWe're excited to have you on board.\n\nBest regards,\nThe Hyke Team`,
-  welcomeSubject:     "Welcome to Hyke Youth Club! 🎉",
+  welcomeTemplate:    `Hi {{first_name}},\n\nWelcome to our club! Your membership application has been approved.\n\nYour Member ID is: {{member_id}}\n\nWe're excited to have you on board.\n\nBest regards,\nThe Team`,
+  welcomeSubject:     "Welcome to the Club! 🎉",
   paymentReminders:   false,
   weeklyDigest:       true,
 
-  clubName:           "Hyke Youth Club",
-  tagline:            "Empowering youth through adventure.",
-  publicEmail:        "info@hyke.lk",
-  phoneNumber:        "+94 77 000 0000",
-  headquarters:       "No. 12, Kandy Road, Colombo 05, Sri Lanka",
+  clubName:           "",
+  tagline:            "",
+  publicEmail:        "",
+  phoneNumber:        "",
+  headquarters:       "",
+  memberIdPrefix:     "M",
 };
 
 // ─── Collection helpers ───────────────────────────────────────────────────────
@@ -69,34 +70,34 @@ function docToSettings(doc: SettingsDoc): ClubSettings {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export async function getSettings(): Promise<ClubSettings> {
+export async function getSettings(clubId: string): Promise<ClubSettings> {
   const coll = await getCollection();
-  const doc  = await coll.findOne({ _id: SETTINGS_DOC_ID });
+  const doc  = await coll.findOne({ _id: clubId });
   if (!doc) return { ...DEFAULT_SETTINGS };
   return docToSettings(doc);
 }
 
-export async function saveSettings(patch: Partial<ClubSettings>): Promise<ClubSettings> {
+export async function saveSettings(clubId: string, patch: Partial<ClubSettings>): Promise<ClubSettings> {
   const coll = await getCollection();
   await coll.updateOne(
-    { _id: SETTINGS_DOC_ID },
+    { _id: clubId },
     { $set: patch },
     { upsert: true },
   );
-  return getSettings();
+  return getSettings(clubId);
 }
 
 /**
  * Stores the pending email + a verification token in the DB.
  * Returns the token so the caller can include it in the verification link.
  */
-export async function createVerificationToken(email: string): Promise<string> {
+export async function createVerificationToken(clubId: string, email: string): Promise<string> {
   const token  = crypto.randomBytes(32).toString("hex");
   const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h from now
 
   const coll = await getCollection();
   await coll.updateOne(
-    { _id: SETTINGS_DOC_ID },
+    { _id: clubId },
     {
       $set: {
         senderEmailPending:      email,
@@ -114,10 +115,11 @@ export async function createVerificationToken(email: string): Promise<string> {
  * Returns `{ ok: true }` or `{ ok: false, reason: string }`.
  */
 export async function consumeVerificationToken(
+  clubId: string,
   token: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const coll = await getCollection();
-  const doc  = await coll.findOne({ _id: SETTINGS_DOC_ID });
+  const doc  = await coll.findOne({ _id: clubId });
 
   if (!doc?.verificationToken) {
     return { ok: false, reason: "No pending verification found." };
@@ -132,7 +134,7 @@ export async function consumeVerificationToken(
   const verifiedEmail = doc.senderEmailPending ?? "";
 
   await coll.updateOne(
-    { _id: SETTINGS_DOC_ID },
+    { _id: clubId },
     {
       $set:   { senderEmail: verifiedEmail },
       $unset: {
@@ -149,10 +151,10 @@ export async function consumeVerificationToken(
 /**
  * Removes the verified sender email (and any pending state).
  */
-export async function removeSenderEmail(): Promise<ClubSettings> {
+export async function removeSenderEmail(clubId: string): Promise<ClubSettings> {
   const coll = await getCollection();
   await coll.updateOne(
-    { _id: SETTINGS_DOC_ID },
+    { _id: clubId },
     {
       $set:   { senderEmail: "" },
       $unset: {
@@ -163,16 +165,16 @@ export async function removeSenderEmail(): Promise<ClubSettings> {
     },
     { upsert: true },
   );
-  return getSettings();
+  return getSettings(clubId);
 }
 
 /**
  * Cancels a pending verification without affecting the current active email.
  */
-export async function cancelPendingVerification(): Promise<ClubSettings> {
+export async function cancelPendingVerification(clubId: string): Promise<ClubSettings> {
   const coll = await getCollection();
   await coll.updateOne(
-    { _id: SETTINGS_DOC_ID },
+    { _id: clubId },
     {
       $unset: {
         senderEmailPending:      "",
@@ -182,5 +184,5 @@ export async function cancelPendingVerification(): Promise<ClubSettings> {
     },
     { upsert: true },
   );
-  return getSettings();
+  return getSettings(clubId);
 }

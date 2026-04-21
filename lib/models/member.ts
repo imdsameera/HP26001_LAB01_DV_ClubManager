@@ -2,7 +2,7 @@ import type { ObjectId } from "mongodb";
 
 export const MEMBERS_COLLECTION = "members";
 export const COUNTERS_COLLECTION = "counters";
-export const MEMBER_ID_PREFIX = "HYKE-";
+export const MEMBER_ID_PREFIX_DEFAULT = "M";
 export const DB_NAME = "club-management-dev";
 
 export type MemberStatus = "pending" | "active";
@@ -17,6 +17,8 @@ export type MemberRole =
 
 export interface MemberDocument {
   _id: ObjectId;
+  /** ID of the club this member belongs to */
+  clubId: string;
   status: MemberStatus;
   initials: string;
   firstName: string;

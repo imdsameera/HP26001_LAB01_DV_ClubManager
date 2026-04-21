@@ -12,11 +12,13 @@ import type { UserRole } from "@/lib/models/user";
 // ─── GET /api/admin/users — list all admin accounts ──────────────────────────
 export async function GET() {
   const session = await auth();
+  const clubId = (session?.user as any)?.clubId;
+  if (!clubId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const users = await listAdminUsers();
+  const users = await listAdminUsers(clubId);
   return NextResponse.json({
     users: users.map(u => ({
       id:        u._id.toString(),
@@ -32,6 +34,8 @@ export async function GET() {
 // ─── POST /api/admin/users — create a new admin account ──────────────────────
 export async function POST(request: NextRequest) {
   const session = await auth();
+  const clubId = (session?.user as any)?.clubId;
+  if (!clubId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
     }
 
-    const id = await createAdminUser(email, name, role, password);
+    const id = await createAdminUser(clubId, email, name, role, password);
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Server error";
@@ -65,6 +69,8 @@ export async function POST(request: NextRequest) {
 // ─── DELETE /api/admin/users?id=xxx — revoke admin access ────────────────────
 export async function DELETE(request: NextRequest) {
   const session = await auth();
+  const clubId = (session?.user as any)?.clubId;
+  if (!clubId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -78,7 +84,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "You cannot revoke your own access." }, { status: 400 });
   }
 
-  const target = await findUserById(id);
+  const target = await findUserById(clubId, id);
   if (!target) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
@@ -87,13 +93,15 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "You do not have permission to remove this admin." }, { status: 403 });
   }
 
-  await deleteUserById(id);
+  await deleteUserById(clubId, id);
   return NextResponse.json({ ok: true });
 }
 
 // ─── PATCH /api/admin/users — change a user's role ───────────────────────────
 export async function PATCH(request: NextRequest) {
   const session = await auth();
+  const clubId = (session?.user as any)?.clubId;
+  if (!clubId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!session?.user?.role || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -105,7 +113,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid role." }, { status: 400 });
     }
 
-    const target = await findUserById(id);
+    const target = await findUserById(clubId, id);
     if (!target) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
     // Prevent self-role-change
@@ -119,7 +127,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "You do not have permission to change this user's role." }, { status: 403 });
     }
 
-    await patchUserById(id, { role: role as UserRole });
+    await patchUserById(clubId, id, { role: role as UserRole });
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Server error";

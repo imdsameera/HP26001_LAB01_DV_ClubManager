@@ -24,11 +24,11 @@ function VerifyContent() {
             {/* Logo mark */}
             <div className="mb-6 flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0066FF] shadow-md shadow-blue-200">
-                <span className="text-sm font-black text-white">H</span>
+                <span className="text-sm font-black text-white">T</span>
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800 leading-none">Hyke Youth Club</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">Club Management System</p>
+                <p className="text-sm font-bold text-slate-800 leading-none">Teamnode</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Management System</p>
               </div>
             </div>
 
@@ -87,7 +87,7 @@ function VerifyContent() {
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          Hyke Youth Club &mdash; Powered by Hyke Global
+          Teamnode &mdash; Powered by teamnode.app
         </p>
       </div>
     </main>

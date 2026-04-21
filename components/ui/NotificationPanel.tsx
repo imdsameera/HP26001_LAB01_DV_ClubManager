@@ -3,24 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Bell, X, Users, CheckCheck, Clock }        from "lucide-react";
 import { useRouter }                                 from "next/navigation";
-
-interface PendingMember {
-  _id:       string;
-  firstName: string;
-  lastName:  string;
-  email:     string;
-  appliedAt: string;
-}
+import { useSession }                             from "next-auth/react";
 
 interface Notification {
-  id:      string;
-  type:    "pending_application";
+  _id:      string;
+  type:    "new_applicant" | "system" | "finance";
   title:   string;
-  body:    string;
-  time:    string;
+  message: string;
+  createdAt: string;
   read:    boolean;
-  memberId: string;
+  metadata?: Record<string, string>;
 }
+
+const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -33,38 +28,50 @@ function timeAgo(iso: string): string {
 }
 
 export default function NotificationPanel() {
-  const router = useRouter();
+  const { data: session } = useSession();
+  const slug = (session?.user as any)?.slug;
+
   const [open,   setOpen]   = useState(false);
   const [tab,    setTab]    = useState<"all" | "unread">("all");
   const [notes,  setNotes]  = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const panelRef = useRef<HTMLDivElement>(null);
+  const lastCountRef = useRef(0);
 
-  const fetchPending = useCallback(async () => {
-    setLoading(true);
+  const fetchNotes = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
-      const res  = await fetch("/api/members?status=pending&limit=20");
-      const data = await res.json() as { members?: PendingMember[] };
-      const members = data.members ?? [];
-      setNotes(prev => {
-        const readSet = new Set(prev.filter(n => n.read).map(n => n.id));
-        return members.map(m => ({
-          id:       m._id,
-          type:     "pending_application" as const,
-          title:    "New Member Application",
-          body:     `${m.firstName} ${m.lastName} applied for membership.`,
-          time:     m.appliedAt,
-          read:     readSet.has(m._id),
-          memberId: m._id,
-        }));
-      });
+      const res  = await fetch("/api/notifications");
+      const data = await res.json() as { notifications?: Notification[] };
+      const fetched = data.notifications ?? [];
+      
+      const unreadCount = fetched.filter(n => !n.read).length;
+      
+      // Play sound if new unread notifications arrived
+      if (isSilent && unreadCount > lastCountRef.current) {
+        const audio = new Audio(NOTIFICATION_SOUND);
+        audio.volume = 0.5;
+        void audio.play().catch(() => {}); // Browser might block autoplay
+      }
+      
+      lastCountRef.current = unreadCount;
+      setNotes(fetched);
     } catch { /* silent */ }
     finally { setLoading(false); }
   }, []);
 
+  // Initial load
   useEffect(() => {
-    if (open) void fetchPending();
-  }, [open, fetchPending]);
+    void fetchNotes();
+  }, [fetchNotes]);
+
+  // Polling every 20 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      void fetchNotes(true);
+    }, 20000);
+    return () => clearInterval(timer);
+  }, [fetchNotes]);
 
   // Close on outside click
   useEffect(() => {
@@ -78,13 +85,39 @@ export default function NotificationPanel() {
   const unreadCount = notes.filter(n => !n.read).length;
   const filtered    = tab === "unread" ? notes.filter(n => !n.read) : notes;
 
-  const markAllRead = () => setNotes(prev => prev.map(n => ({ ...n, read: true })));
-  const markRead    = (id: string) => setNotes(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAllRead = async () => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      setNotes(prev => prev.map(n => ({ ...n, read: true })));
+      lastCountRef.current = 0;
+    } catch (e) { console.error(e); }
+  };
+
+  const markRead = async (id: string) => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setNotes(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+      lastCountRef.current = Math.max(0, lastCountRef.current - 1);
+    } catch (e) { console.error(e); }
+  };
 
   const handleClick = (n: Notification) => {
-    markRead(n.id);
+    if (!n.read) void markRead(n._id);
     setOpen(false);
-    router.push("/members?tab=pending");
+    
+    if (n.type === "new_applicant" && n.metadata?.applicantId) {
+      router.push(`/${slug}/dashboard?applicantId=${n.metadata.applicantId}`);
+    } else {
+      router.push(`/${slug}/dashboard`);
+    }
   };
 
   return (
@@ -160,7 +193,7 @@ export default function NotificationPanel() {
             ) : (
               filtered.map(n => (
                 <button
-                  key={n.id}
+                  key={n._id}
                   onClick={() => handleClick(n)}
                   className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-gray-50 ${
                     !n.read ? "bg-blue-50/50" : ""
@@ -169,16 +202,20 @@ export default function NotificationPanel() {
                   <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
                     !n.read ? "bg-blue-100" : "bg-gray-100"
                   }`}>
-                    <Users size={13} className={!n.read ? "text-blue-600" : "text-gray-500"} />
+                    {n.type === "new_applicant" ? (
+                      <Users size={13} className={!n.read ? "text-blue-600" : "text-gray-500"} />
+                    ) : (
+                      <Bell size={13} className={!n.read ? "text-blue-600" : "text-gray-500"} />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className={`text-xs font-semibold ${!n.read ? "text-slate-800" : "text-slate-600"}`}>
                       {n.title}
                       {!n.read && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-gray-500 leading-snug">{n.body}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-500 leading-snug">{n.message}</p>
                     <p className="mt-1 flex items-center gap-1 text-[10px] text-gray-400">
-                      <Clock size={10} />{timeAgo(n.time)}
+                      <Clock size={10} />{timeAgo(n.createdAt)}
                     </p>
                   </div>
                 </button>
@@ -189,7 +226,7 @@ export default function NotificationPanel() {
           {/* Footer */}
           <div className="border-t border-gray-100">
             <button
-              onClick={() => { setOpen(false); router.push("/members?tab=pending"); }}
+              onClick={() => { setOpen(false); router.push(`/${slug}/dashboard`); }}
               className="w-full py-2.5 text-center text-xs font-medium text-[#0066FF] hover:bg-blue-50/50 transition"
             >
               View all pending applications

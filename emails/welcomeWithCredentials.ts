@@ -11,7 +11,7 @@ interface WelcomeCredentialsOpts {
 }
 
 export function welcomeWithCredentials(opts: WelcomeCredentialsOpts): EmailTemplate {
-  const { firstName, lastName, memberId, email, password, loginUrl, clubName = "Hyke Youth Club" } = opts;
+  const { firstName, lastName, memberId, email, password, loginUrl, clubName = "Teamnode Youth Club" } = opts;
   const fullName = `${firstName} ${lastName}`.trim();
 
   const subject = `Welcome to ${clubName}! Your member account is ready 🎉`;

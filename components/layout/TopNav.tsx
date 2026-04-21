@@ -27,18 +27,26 @@ const SEARCH_PLACEHOLDERS: Record<string, string> = {
   "/portal":     "Search portal…",
 };
 
-function getPlaceholder(pathname: string): string {
+function getPlaceholder(pathname: string, slug?: string): string {
+  // Strip the /[slug] prefix if it exists to match the keys
+  const normalizedPath = slug ? pathname.replace(`/${slug}`, "") : pathname;
+  const path = normalizedPath === "" ? "/dashboard" : normalizedPath;
+
   for (const [prefix, label] of Object.entries(SEARCH_PLACEHOLDERS)) {
-    if (pathname.startsWith(prefix)) return label;
+    if (path.startsWith(prefix)) return label;
   }
   return "Search…";
 }
 
+import { useSession } from "next-auth/react";
+
 export default function TopNav({
   pageTitle, onMenuToggle, userName, userEmail, userRole, userAvatar,
 }: TopNavProps) {
-  const pathname     = usePathname();
-  const placeholder  = getPlaceholder(pathname);
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const slug = (session?.user as any)?.slug;
+  const placeholder = getPlaceholder(pathname, slug);
 
   return (
     <header

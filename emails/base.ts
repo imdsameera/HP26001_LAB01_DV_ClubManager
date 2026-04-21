@@ -51,7 +51,7 @@ export function buildHtml(opts: BuildOptions): string {
             <td style="width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:8px;
                        text-align:center;line-height:36px;font-size:18px;font-weight:900;color:#fff">H</td>
             <td style="padding-left:12px">
-              <p style="margin:0;font-size:16px;font-weight:700;color:#fff">Hyke Youth Club</p>
+              <p style="margin:0;font-size:16px;font-weight:700;color:#fff">Teamnode Youth Club</p>
               <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,.7)">Club Management System</p>
             </td>
           </tr></table>
@@ -69,10 +69,10 @@ export function buildHtml(opts: BuildOptions): string {
         <tr><td style="padding:0 32px"><hr style="border:none;border-top:1px solid #e2e8f0;margin:0"/></td></tr>
         <!-- Footer -->
         <tr><td style="padding:20px 32px;font-size:12px;color:#94a3b8;line-height:1.6">
-          ${footerNote ?? "This email was sent automatically by Hyke Youth Club's management system."}
+          ${footerNote ?? "This email was sent automatically by Teamnode Youth Club's management system."}
         </td></tr>
       </table>
-      <p style="margin:20px 0 0;font-size:11px;color:#cbd5e1">Hyke Youth Club — Powered by Hyke Global</p>
+      <p style="margin:20px 0 0;font-size:11px;color:#cbd5e1">Teamnode Youth Club — Powered by Teamnode Global</p>
     </td></tr>
   </table>
 </body></html>`;
