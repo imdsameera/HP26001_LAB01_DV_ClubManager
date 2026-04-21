@@ -13,12 +13,21 @@ import {
   countMembersByStatus,
   deleteMemberById,
   findMemberById,
+  findMemberByMemberId,
+  findMemberByEmail,
   findMembersByStatus,
   insertActiveMember,
   insertMember,
   updateMemberById,
+  getAssignedRoles as getAssignedRolesFromDb,
+  checkExistingCredentials,
 } from "@/lib/repositories/memberRepository";
+import { deleteMemberAuthAccountByEmail } from "@/lib/repositories/userRepository";
 import type { AdminMemberFields, JoinFields } from "@/lib/validators/member";
+
+export async function getAssignedRoles(): Promise<MemberRole[]> {
+  return await getAssignedRolesFromDb();
+}
 
 /** Mirrors UI `Member` from MemberDetailPanel (no financials from API). */
 export interface MemberApiRecord {
@@ -39,18 +48,28 @@ export interface MemberApiRecord {
 export interface PendingApprovalRow {
   id: string;
   initials: string;
+  firstName: string;
+  lastName: string;
   name: string;
+  nic: string;
+  email?: string;
+  phoneCode: string;
+  phone: string;
+  whatsappCode: string;
+  whatsapp: string;
+  address: string;
+  avatarUrl?: string;
+  role: MemberRole;
   dateApplied: string;
 }
 
-function initialsFromDisplayName(name: string): string {
-  const str = name.trim();
-  const tokens = str.split(/[\s.]+/).filter(Boolean);
-  if (tokens.length === 0) return "?";
-  if (tokens.length === 1) return tokens[0].substring(0, 2).toUpperCase();
-  const first = tokens[0][0];
-  const second = tokens[tokens.length - 1][0];
-  return (first + (second || "")).toUpperCase() || "?";
+function initialsFromNames(firstName: string, lastName: string): string {
+  const f = firstName.trim();
+  const l = lastName.trim();
+  const firstChar = f ? f[0].toUpperCase() : "";
+  const secondChar = l ? l[0].toUpperCase() : "";
+  const result = firstChar + secondChar;
+  return result || "?";
 }
 
 function documentToMemberApi(doc: MemberDocument): MemberApiRecord | null {
@@ -78,8 +97,19 @@ function pendingToRow(doc: MemberDocument): PendingApprovalRow {
   const d = String(doc.appliedAt.getDate()).padStart(2, "0");
   return {
     id: doc._id.toHexString(),
-    initials: initialsFromDisplayName(name),
+    initials: initialsFromNames(doc.firstName, doc.lastName),
+    firstName: doc.firstName,
+    lastName: doc.lastName,
     name,
+    nic: doc.nic,
+    email: doc.email || undefined,
+    phoneCode: doc.phoneCode,
+    phone: doc.phone,
+    whatsappCode: doc.whatsappCode,
+    whatsapp: doc.whatsapp,
+    address: doc.address,
+    avatarUrl: doc.avatarUrl,
+    role: doc.role ?? "Member",
     dateApplied: `${y}-${m}-${d}`,
   };
 }
@@ -109,6 +139,12 @@ export async function createPendingFromJoin(
   fields: JoinFields,
   avatarDataUrl?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Check for existing credentials before proceeding
+  const duplicates = await checkExistingCredentials(fields.nic, fields.email, fields.phone);
+  if (duplicates.email) return { ok: false, error: "This email is already registered." };
+  if (duplicates.nic) return { ok: false, error: "This NIC is already registered." };
+  if (duplicates.phone) return { ok: false, error: "This phone number is already registered." };
+
   const now = new Date();
   const nameKey = `${fields.initials}|${fields.firstName}|${fields.lastName}|${now.getTime()}`;
   const doc: Omit<MemberDocument, "_id"> = {
@@ -203,15 +239,28 @@ export async function updateActiveMember(
 }
 
 export async function removeMember(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const member = await findMemberById(id);
+  if (!member) return { ok: false, error: "Not found" };
+
   const ok = await deleteMemberById(id);
-  if (!ok) return { ok: false, error: "Not found" };
+  if (!ok) return { ok: false, error: "Failed to delete member" };
+
+  if (member.email) {
+    try {
+      await deleteMemberAuthAccountByEmail(member.email);
+    } catch (e) {
+      console.error("[removeMember] Failed to delete auth account for:", member.email, e);
+    }
+  }
+
   return { ok: true };
 }
 
 export async function approveMember(
   id: string,
+  role?: MemberRole,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const doc = await approvePendingMember(id);
+  const doc = await approvePendingMember(id, role);
   if (!doc) return { ok: false, error: "Pending application not found" };
   return { ok: true };
 }
@@ -219,5 +268,17 @@ export async function approveMember(
 export async function getMemberApiById(id: string): Promise<MemberApiRecord | null> {
   const doc = await findMemberById(id);
   if (!doc || doc.status !== "active") return null;
+  return documentToMemberApi(doc);
+}
+
+export async function getMemberApiByMemberId(memberId: string): Promise<MemberApiRecord | null> {
+  const doc = await findMemberByMemberId(memberId);
+  if (!doc) return null;
+  return documentToMemberApi(doc);
+}
+
+export async function getMemberApiByEmail(email: string): Promise<MemberApiRecord | null> {
+  const doc = await findMemberByEmail(email);
+  if (!doc) return null;
   return documentToMemberApi(doc);
 }

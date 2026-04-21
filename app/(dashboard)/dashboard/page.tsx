@@ -11,11 +11,24 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import PendingApplicantModal from "@/components/ui/PendingApplicantModal";
+import type { Role } from "@/components/ui/MemberDetailPanel";
 
 interface PendingRow {
   id: string;
   initials: string;
+  firstName: string;
+  lastName: string;
   name: string;
+  nic: string;
+  email?: string;
+  phoneCode: string;
+  phone: string;
+  whatsappCode: string;
+  whatsapp: string;
+  address: string;
+  avatarUrl?: string;
+  role: string;
   dateApplied: string;
 }
 
@@ -82,6 +95,7 @@ function StatCard({
 export default function DashboardPage() {
   const [pending, setPending] = useState<PendingRow[]>([]);
   const [totalMembers, setTotalMembers] = useState(0);
+  const [selectedApplicant, setSelectedApplicant] = useState<PendingRow | null>(null);
 
   const refreshDashboard = useCallback(async () => {
     const patch = await fetchDashboardPatch();
@@ -102,14 +116,25 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const handleApprove = async (id: string) => {
-    const res = await fetch(`/api/members/${id}/approve`, { method: "POST" });
-    if (res.ok) await refreshDashboard();
+  const handleApprove = async (id: string, role?: Role) => {
+    const body = role ? JSON.stringify({ role }) : undefined;
+    const res = await fetch(`/api/members/${id}/approve`, {
+      method: "POST",
+      headers: role ? { "Content-Type": "application/json" } : undefined,
+      body,
+    });
+    if (res.ok) {
+      await refreshDashboard();
+      if (selectedApplicant?.id === id) setSelectedApplicant(null);
+    }
   };
 
   const handleReject = async (id: string) => {
     const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
-    if (res.ok) await refreshDashboard();
+    if (res.ok) {
+      await refreshDashboard();
+      if (selectedApplicant?.id === id) setSelectedApplicant(null);
+    }
   };
 
   return (
@@ -168,14 +193,23 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {pending.map((row) => (
-                  <tr key={row.id} className="transition-colors hover:bg-gray-50/60">
+                  <tr
+                    key={row.id}
+                    className="transition-colors hover:bg-gray-50/60 cursor-pointer group"
+                    onClick={() => setSelectedApplicant(row)}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-[#0066FF]">
-                          {row.initials}
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-[#0066FF] overflow-hidden">
+                          {row.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={row.avatarUrl} alt={row.name} className="h-full w-full object-cover" />
+                          ) : (
+                            row.initials
+                          )}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-800">{row.name}</p>
+                          <p className="text-sm font-medium text-slate-800 transition group-hover:text-[#0066FF]">{row.name}</p>
                           <span className="inline-flex items-center gap-1 text-[11px] text-orange-400">
                             <Clock size={10} /> Pending review
                           </span>
@@ -185,10 +219,24 @@ export default function DashboardPage() {
                     <td className="px-6 py-4 text-sm text-gray-400">{formatDate(row.dateApplied)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => void handleApprove(row.id)} className="flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-600 transition hover:bg-green-600 hover:text-white active:scale-95">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleApprove(row.id);
+                          }}
+                          className="flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-600 transition hover:bg-green-600 hover:text-white active:scale-95"
+                        >
                           <CheckCircle size={13} /> Approve
                         </button>
-                        <button type="button" onClick={() => void handleReject(row.id)} className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white active:scale-95">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleReject(row.id);
+                          }}
+                          className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white active:scale-95"
+                        >
                           <XCircle size={13} /> Reject
                         </button>
                       </div>
@@ -200,6 +248,14 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      <PendingApplicantModal
+        isOpen={selectedApplicant !== null}
+        onClose={() => setSelectedApplicant(null)}
+        applicant={selectedApplicant as any}
+        onApprove={(id, role) => void handleApprove(id, role)}
+        onReject={(id) => void handleReject(id)}
+      />
     </div>
   );
 }

@@ -104,7 +104,13 @@ export default function PhoneInput({
       <input
         type="tel"
         value={phoneValue}
-        onChange={(e) => onPhoneChange(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          const digitCount = (v.match(/\d/g) || []).length;
+          if (/^[\d\s+\-()]*$/.test(v) && digitCount <= 10) {
+            onPhoneChange(v);
+          }
+        }}
         placeholder={placeholder}
         required={required}
         disabled={disabled}

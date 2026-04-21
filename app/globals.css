@@ -125,6 +125,10 @@ body {
   line-height: 1.5;
 }
 
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 /* Scrollbar styling for sidebar */
 .sidebar-scroll::-webkit-scrollbar {
   width: 4px;

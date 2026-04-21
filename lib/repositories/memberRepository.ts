@@ -77,6 +77,19 @@ export async function findMembersByStatus(status: MemberStatus): Promise<MemberD
   return coll.find({ status }).sort(sort).toArray();
 }
 
+export async function findMemberByMemberId(memberId: string): Promise<MemberDocument | null> {
+  const coll = await getColl();
+  return coll.findOne({ memberId, status: "active" });
+}
+
+export async function findMemberByEmail(email: string): Promise<MemberDocument | null> {
+  const coll = await getColl();
+  return coll.findOne({ 
+    email: { $regex: new RegExp(`^${email.trim()}$`, "i") }, 
+    status: "active" 
+  });
+}
+
 export async function countMembersByStatus(status: MemberStatus): Promise<number> {
   const coll = await getColl();
   return coll.countDocuments({ status });
@@ -151,7 +164,7 @@ export async function insertActiveMember(
   return insertedId;
 }
 
-export async function approvePendingMember(id: string): Promise<MemberDocument | null> {
+export async function approvePendingMember(id: string, role?: MemberRole): Promise<MemberDocument | null> {
   if (!ObjectId.isValid(id)) return null;
   const coll = await getColl();
   const oid = new ObjectId(id);
@@ -166,7 +179,7 @@ export async function approvePendingMember(id: string): Promise<MemberDocument |
     $set: {
       status: "active" as MemberStatus,
       memberId,
-      role: (pending.role ?? "Member") as MemberRole,
+      role: role ?? (pending.role ?? "Member") as MemberRole,
       joinDate,
       updatedAt: now,
     },
@@ -176,4 +189,42 @@ export async function approvePendingMember(id: string): Promise<MemberDocument |
     returnDocument: "after",
   });
   return out;
+}
+
+export async function getAssignedRoles(): Promise<MemberRole[]> {
+  const coll = await getColl();
+  // Find distinct roles from active members, filter out 'Member'
+  const roles = await coll.distinct("role", { status: "active" }) as MemberRole[];
+  return roles.filter(r => r && r !== "Member");
+}
+
+export async function checkExistingCredentials(
+  nic?: string,
+  email?: string,
+  phone?: string
+): Promise<{ nic?: boolean; email?: boolean; phone?: boolean }> {
+  const coll = await getColl();
+  const conditions = [];
+
+  if (nic) conditions.push({ nic: { $regex: new RegExp(`^${nic.trim()}$`, "i") } });
+  if (email) conditions.push({ email: { $regex: new RegExp(`^${email.trim()}$`, "i") } });
+  if (phone) conditions.push({ phone: { $regex: new RegExp(`^${phone.trim()}$`, "i") } });
+
+  if (conditions.length === 0) return {};
+
+  const docs = await coll
+    .find({
+      status: { $in: ["active", "pending"] as MemberStatus[] },
+      $or: conditions,
+    })
+    .project<{ nic?: string; email?: string; phone?: string }>({ nic: 1, email: 1, phone: 1 })
+    .toArray();
+
+  const result: { nic?: boolean; email?: boolean; phone?: boolean } = {};
+  for (const doc of docs) {
+    if (nic && doc.nic?.toLowerCase() === nic.toLowerCase().trim()) result.nic = true;
+    if (email && doc.email?.toLowerCase() === email.toLowerCase().trim()) result.email = true;
+    if (phone && doc.phone?.toLowerCase() === phone.toLowerCase().trim()) result.phone = true;
+  }
+  return result;
 }

@@ -6,7 +6,8 @@ import {
   ImagePlus,
   CheckCircle2,
   ShieldCheck,
-  Trash2
+  Trash2,
+  AlertCircle
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/ui/PhoneInput";
@@ -32,6 +33,7 @@ export default function JoinPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -107,6 +109,7 @@ export default function JoinPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const fd = new FormData();
@@ -128,7 +131,7 @@ export default function JoinPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(typeof body.error === "string" ? body.error : "Could not submit application.");
+        setFormError(typeof body.error === "string" ? body.error : "Could not submit application. Please check your credentials and try again.");
         return;
       }
       router.push("/join/pending");
@@ -262,11 +265,10 @@ export default function JoinPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Last Name"
+                  placeholder="Last Name (Optional)"
                   value={form.lastName}
                   onChange={handleField("lastName")}
                   onBlur={handleBlur("lastName")}
-                  required
                   className="w-full sm:w-1/2 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -275,7 +277,7 @@ export default function JoinPage() {
             {/* NIC */}
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
               <label className="w-full sm:w-36 shrink-0 text-sm font-medium text-slate-700">
-                NIC
+                NIC <span className="text-gray-400 font-normal text-xs">(optional)</span>
               </label>
               <div className="flex w-full flex-1 min-w-0">
                 <input
@@ -299,6 +301,7 @@ export default function JoinPage() {
                   placeholder="member@example.com"
                   value={form.email}
                   onChange={handleField("email")}
+                  required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
                 />
               </div>
@@ -376,6 +379,15 @@ export default function JoinPage() {
 
             {/* Submit */}
             <div className="mt-2 w-full border-t border-gray-100 pt-6">
+              {formError && (
+                <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                  <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-800">Check Your Details</p>
+                    <p className="mt-1 text-sm text-red-600">{formError}</p>
+                  </div>
+                </div>
+              )}
               <Button
                 type="submit"
                 variant="primary"
