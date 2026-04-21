@@ -231,12 +231,12 @@ function GeneralProfileTab({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(`https://teamnode.app/${settings.slug || handle}/join`);
+    navigator.clipboard.writeText(`https://teamnode.app/${handle}/join`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
   const cleanHandle = (val: string) =>
-    val.toLowerCase().replace(/[^a-z0-0]/g, "");
+    val.toLowerCase().replace(/[^a-z0-9]/g, "");
 
   return (
     <div className="space-y-6">
@@ -291,7 +291,7 @@ function GeneralProfileTab({
         <FieldRow label="Public Join Link">
            <div className="flex items-center gap-2">
              <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 font-mono truncate">
-               https://teamnode.app/{settings.slug || handle}/join
+               https://teamnode.app/{handle}/join
              </div>
              <button 
                 onClick={handleCopy}
