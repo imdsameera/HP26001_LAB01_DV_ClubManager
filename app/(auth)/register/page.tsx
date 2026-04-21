@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { 
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const { data: session } = useSession();
   
@@ -33,6 +33,9 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { update } = useSession();
+
+  // (rest of the current RegisterPage logic converted to content component...)
+  // [Note: I am moving the logic into the Inner component for Suspense]
 
   // Step 1: Account
   const [name, setName] = useState("");
@@ -504,5 +507,17 @@ export default function RegisterPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-white shadow-xl shadow-blue-600/20" />
+      </div>
+    }>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

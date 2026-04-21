@@ -29,6 +29,7 @@ function timeAgo(iso: string): string {
 
 export default function NotificationPanel() {
   const { data: session } = useSession();
+  const router = useRouter();
   const slug = (session?.user as any)?.slug;
 
   const [open,   setOpen]   = useState(false);
