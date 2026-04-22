@@ -3,7 +3,8 @@ import { auth }                         from "@/auth";
 import { approveMember }               from "@/lib/services/memberService";
 import { getSettings }                 from "@/lib/services/settingsService";
 import { findMemberById }              from "@/lib/repositories/memberRepository";
-import { createMemberUser, generateTempPassword } from "@/lib/services/userService";
+import { createMemberUser } from "@/lib/services/userService";
+import { generateSecurePassword } from "@/lib/utils";
 import { sendEmail }                   from "@/lib/utils/mailer";
 import { welcomeWithCredentials }      from "@/emails";
 import type { MemberRole }             from "@/lib/models/member";
@@ -50,7 +51,7 @@ export async function POST(_request: Request, context: RouteContext) {
       }
 
       // Generate temp password and create portal account
-      const tempPassword = generateTempPassword();
+      const tempPassword = generateSecurePassword();
       await createMemberUser(
         clubId,
         doc.email,
