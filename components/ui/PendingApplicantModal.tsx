@@ -24,6 +24,8 @@ export default function PendingApplicantModal({
 }: PendingApplicantModalProps) {
   const [role, setRole] = useState<Role>("Member");
   const [assignedRoles, setAssignedRoles] = useState<Role[]>([]);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -134,17 +136,43 @@ export default function PendingApplicantModal({
       <div className="flex items-center justify-end gap-3 rounded-b-2xl border-t border-gray-100 bg-gray-50/50 px-6 py-4">
         <button
           type="button"
-          onClick={() => onReject(applicant.id)}
-          className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 hover:text-red-700 active:scale-95"
+          disabled={isApproving || isRejecting}
+          onClick={async () => {
+            setIsRejecting(true);
+            try {
+              await onReject(applicant.id);
+            } finally {
+              setIsRejecting(false);
+            }
+          }}
+          className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 hover:text-red-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <XCircle size={16} /> Reject Application
+          {isRejecting ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-t-red-600" />
+          ) : (
+            <XCircle size={16} />
+          )}
+          Reject Application
         </button>
         <button
           type="button"
-          onClick={() => onApprove(applicant.id, role)}
-          className="flex items-center gap-2 rounded-lg bg-[#0066FF] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
+          disabled={isApproving || isRejecting}
+          onClick={async () => {
+            setIsApproving(true);
+            try {
+              await onApprove(applicant.id, role);
+            } finally {
+              setIsApproving(false);
+            }
+          }}
+          className="flex items-center gap-2 rounded-lg bg-[#0066FF] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed min-w-[160px] justify-center"
         >
-          <CheckCircle size={16} /> Approve &amp; Save
+          {isApproving ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          ) : (
+            <CheckCircle size={16} />
+          )}
+          {isApproving ? "Approving..." : "Approve & Save"}
         </button>
       </div>
     </Modal>

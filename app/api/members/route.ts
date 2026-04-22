@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import {
   createActiveMember,
   getMemberApiByMemberId,
@@ -11,6 +12,10 @@ import { adminFieldsFromFormData, validateAdminMemberFields } from "@/lib/valida
 
 export async function GET(request: Request) {
   try {
+    const session = await auth();
+    const clubId = (session?.user as any)?.clubId;
+    if (!clubId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const status    = searchParams.get("status")   ?? "active";
     const memberIdQ = searchParams.get("memberId");
@@ -18,12 +23,12 @@ export async function GET(request: Request) {
 
     // Single-member lookup
     if (memberIdQ) {
-      const member = await getMemberApiByMemberId(memberIdQ);
+      const member = await getMemberApiByMemberId(clubId, memberIdQ);
       if (member) return NextResponse.json({ members: [member] });
     }
 
     if (emailQ) {
-      const member = await getMemberApiByEmail(emailQ);
+      const member = await getMemberApiByEmail(clubId, emailQ);
       if (member) return NextResponse.json({ members: [member] });
     }
 
@@ -32,10 +37,10 @@ export async function GET(request: Request) {
     }
 
     if (status === "pending") {
-      const pending = await listPendingApprovals();
+      const pending = await listPendingApprovals(clubId);
       return NextResponse.json({ pending });
     }
-    const members = await listActiveMembersApi();
+    const members = await listActiveMembersApi(clubId);
     return NextResponse.json({ members });
   } catch (e) {
     console.error(e);
@@ -45,6 +50,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    const clubId = (session?.user as any)?.clubId;
+    if (!clubId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("multipart/form-data")) {
       return NextResponse.json({ error: "Expected multipart form data" }, { status: 400 });
@@ -62,7 +71,7 @@ export async function POST(request: Request) {
       avatarDataUrl = await fileToDataUrl(avatar);
     }
 
-    const result = await createActiveMember(fields, avatarDataUrl);
+    const result = await createActiveMember(clubId, fields, avatarDataUrl);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }

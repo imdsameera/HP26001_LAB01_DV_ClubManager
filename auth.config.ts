@@ -20,18 +20,28 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     jwt({ token, user, trigger, session }) {
       if (user) {
-        token.role     = (user as { role: UserRole }).role;
-        token.memberId = (user as { memberId?: string }).memberId;
+        const u = user as any;
+        token.role     = u.role;
+        token.memberId = u.memberId;
+        token.clubId   = u.clubId;
+        token.slug     = u.clubSlug;
+        token.status   = u.status;
       }
       if (trigger === "update" && session) {
-        if (session.name)  token.name  = session.name;
+        if (session.name)   token.name   = session.name;
+        if (session.status) token.status = session.status;
+        if (session.slug)   token.slug   = session.slug;
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
+        (session.user as any).id                           = token.sub; 
         (session.user as { role?: UserRole }).role         = token.role as UserRole;
         (session.user as { memberId?: string }).memberId   = token.memberId as string | undefined;
+        (session.user as { clubId?: string }).clubId       = token.clubId as string | undefined;
+        (session.user as { slug?: string }).slug           = token.slug as string | undefined;
+        (session.user as { status?: string }).status       = token.status as string | undefined;
       }
       return session;
     },

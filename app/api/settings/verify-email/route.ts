@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { auth } from "@/auth";
 import {
   createVerificationToken,
   consumeVerificationToken,
@@ -13,11 +14,15 @@ import { sendVerificationEmail } from "@/lib/utils/mailer";
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    const clubId = (session?.user as any)?.clubId;
+    if (!clubId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { email, action } = await request.json() as { email?: string; action?: string };
 
     // Cancel pending verification
     if (action === "cancel") {
-      await cancelPendingVerification();
+      await cancelPendingVerification(clubId);
       return NextResponse.json({ ok: true });
     }
 
@@ -25,12 +30,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
     }
 
-    const token = await createVerificationToken(email);
+    const token = await createVerificationToken(clubId, email);
 
     // Build the verification URL — must point to the API route (GET handler),
     // which validates the token and then redirects to the display page.
     const origin    = request.nextUrl.origin;
-    const verifyUrl = `${origin}/api/settings/verify-email?token=${token}`;
+    const verifyUrl = `${origin}/api/settings/verify-email?token=${token}&clubId=${clubId}`;
 
     await sendVerificationEmail(email, verifyUrl);
 
@@ -48,13 +53,14 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const token  = request.nextUrl.searchParams.get("token") ?? "";
+  const clubId = request.nextUrl.searchParams.get("clubId") ?? "";
   const origin = request.nextUrl.origin;
 
-  if (!token) {
-    return NextResponse.redirect(`${origin}/verify-email?error=missing_token`);
+  if (!token || !clubId) {
+    return NextResponse.redirect(`${origin}/verify-email?error=missing_params`);
   }
 
-  const result = await consumeVerificationToken(token);
+  const result = await consumeVerificationToken(clubId, token);
 
   if (!result.ok) {
     const msg = encodeURIComponent(result.reason);
@@ -62,7 +68,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Get the now-verified email to pass along to the success page
-  const settings = await getSettings();
+  const settings = await getSettings(clubId);
   const email = encodeURIComponent(settings.senderEmail);
   return NextResponse.redirect(`${origin}/verify-email?success=1&email=${email}`);
 }

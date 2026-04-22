@@ -27,9 +27,9 @@ export async function findUserByIdentifier(identifier: string): Promise<UserDocu
   }
 }
 
-export async function findUserById(id: string): Promise<UserDocument | null> {
+export async function findUserById(clubId: string, id: string): Promise<UserDocument | null> {
   const c = await col();
-  return c.findOne({ _id: new ObjectId(id) });
+  return c.findOne({ _id: new ObjectId(id), clubId });
 }
 
 export async function createUser(
@@ -66,28 +66,32 @@ export async function patchUser(
   );
 }
 
-export async function listAdminUsers(): Promise<UserDocument[]> {
+export async function listAdminUsers(clubId: string): Promise<UserDocument[]> {
   const c = await col();
   return c
-    .find({ role: { $in: ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"] as UserRole[] } })
+    .find({ 
+      clubId,
+      role: { $in: ["SUPER_ADMIN", "ADMIN", "SECRETARY", "TREASURER"] as UserRole[] } 
+    })
     .sort({ createdAt: -1 })
     .toArray();
 }
 
 export async function patchUserById(
+  clubId: string,
   id: string,
   data: Partial<Omit<UserDocument, "_id" | "email" | "createdAt">>
 ): Promise<void> {
   const c = await col();
   await c.updateOne(
-    { _id: new ObjectId(id) },
+    { _id: new ObjectId(id), clubId },
     { $set: { ...data, updatedAt: new Date() } },
   );
 }
 
-export async function deleteUserById(id: string): Promise<void> {
+export async function deleteUserById(clubId: string, id: string): Promise<void> {
   const c = await col();
-  await c.deleteOne({ _id: new ObjectId(id) });
+  await c.deleteOne({ _id: new ObjectId(id), clubId });
 }
 
 export async function deleteMemberAuthAccountByEmail(email: string): Promise<void> {

@@ -17,7 +17,7 @@ import ImageCropperModal from "./ImageCropperModal";
 import {
   INCOME_CATEGORIES,
   EXPENSE_CATEGORIES,
-} from "@/app/(dashboard)/finance/page";
+} from "@/lib/constants/finance";
 
 interface TransactionModalProps {
   isOpen: boolean;

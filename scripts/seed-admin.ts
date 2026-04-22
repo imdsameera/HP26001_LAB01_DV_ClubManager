@@ -21,7 +21,7 @@ const DB_NAME   = "club-management-dev";
 const COLL      = "users";
 
 // ── Default credentials (change these!) ──────────────────────────────────────
-const ADMIN_EMAIL    = "admin@hyke.lk";
+const ADMIN_EMAIL    = "admin@teamnode.app";
 const ADMIN_NAME     = "Super Admin";
 const ADMIN_PASSWORD = "Admin@123";   // ← Change after first login!
 

@@ -10,10 +10,11 @@ import type {
 } from "mongodb";
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/db/mongodb";
+import { getSettings } from "@/lib/services/settingsService";
 import {
   COUNTERS_COLLECTION,
   DB_NAME,
-  MEMBER_ID_PREFIX,
+  MEMBER_ID_PREFIX_DEFAULT,
   MEMBERS_COLLECTION,
   type MemberDocument,
   type MemberRole,
@@ -45,64 +46,78 @@ async function getColl(): Promise<Collection<MemberDocument>> {
   return membersCollection(db);
 }
 
-async function nextMemberIdString(): Promise<string> {
+async function nextMemberIdString(clubId: string): Promise<string> {
+  const settings = await getSettings(clubId);
+  const prefix   = settings.memberIdPrefix || MEMBER_ID_PREFIX_DEFAULT;
+
   const db = await getDb(DB_NAME);
   const counters = db.collection<{ _id: string; seq: number }>(COUNTERS_COLLECTION);
   const out = await counters.findOneAndUpdate(
-    { _id: "memberSeq" },
+    { _id: `memberSeq_${clubId}` },
     { $inc: { seq: 1 } },
     { upsert: true, returnDocument: "after" },
   );
   const seq = out?.seq ?? 1;
-  return `${MEMBER_ID_PREFIX}${String(seq).padStart(3, "0")}`;
+  return `${prefix}${String(seq).padStart(3, "0")}`;
+}
+
+export async function getCurrentSequence(clubId: string): Promise<number> {
+  const db = await getDb(DB_NAME);
+  const counters = db.collection<{ _id: string; seq: number }>(COUNTERS_COLLECTION);
+  const doc = await counters.findOne({ _id: `memberSeq_${clubId}` });
+  return doc?.seq ?? 0;
 }
 
 export async function insertMember(
-  doc: OptionalUnlessRequiredId<Omit<MemberDocument, "_id">>,
+  clubId: string,
+  doc: OptionalUnlessRequiredId<Omit<MemberDocument, "_id" | "clubId">>,
 ): Promise<ObjectId> {
   const coll = await getColl();
-  const { insertedId } = await coll.insertOne(doc as OptionalUnlessRequiredId<MemberDocument>);
+  const fullDoc = { ...doc, clubId } as OptionalUnlessRequiredId<MemberDocument>;
+  const { insertedId } = await coll.insertOne(fullDoc);
   return insertedId;
 }
 
-export async function findMemberById(id: string): Promise<MemberDocument | null> {
+export async function findMemberById(clubId: string, id: string): Promise<MemberDocument | null> {
   if (!ObjectId.isValid(id)) return null;
   const coll = await getColl();
-  return coll.findOne({ _id: new ObjectId(id) });
+  return coll.findOne({ _id: new ObjectId(id), clubId });
 }
 
-export async function findMembersByStatus(status: MemberStatus): Promise<MemberDocument[]> {
+export async function findMembersByStatus(clubId: string, status: MemberStatus): Promise<MemberDocument[]> {
   const coll = await getColl();
   const sort: Sort = status === "pending" ? { appliedAt: -1 } : { joinDate: -1 };
-  return coll.find({ status }).sort(sort).toArray();
+  return coll.find({ status, clubId }).sort(sort).toArray();
 }
 
-export async function findMemberByMemberId(memberId: string): Promise<MemberDocument | null> {
+export async function findMemberByMemberId(clubId: string, memberId: string): Promise<MemberDocument | null> {
   const coll = await getColl();
-  return coll.findOne({ memberId, status: "active" });
+  return coll.findOne({ memberId, clubId, status: "active" });
 }
 
-export async function findMemberByEmail(email: string): Promise<MemberDocument | null> {
+export async function findMemberByEmail(clubId: string, email: string): Promise<MemberDocument | null> {
   const coll = await getColl();
   return coll.findOne({ 
     email: { $regex: new RegExp(`^${email.trim()}$`, "i") }, 
+    clubId,
     status: "active" 
   });
 }
 
-export async function countMembersByStatus(status: MemberStatus): Promise<number> {
+export async function countMembersByStatus(clubId: string, status: MemberStatus): Promise<number> {
   const coll = await getColl();
-  return coll.countDocuments({ status });
+  return coll.countDocuments({ status, clubId });
 }
 
-export async function deleteMemberById(id: string): Promise<boolean> {
+export async function deleteMemberById(clubId: string, id: string): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const coll = await getColl();
-  const r = await coll.deleteOne({ _id: new ObjectId(id) });
+  const r = await coll.deleteOne({ _id: new ObjectId(id), clubId });
   return r.deletedCount === 1;
 }
 
 export async function updateMemberById(
+  clubId: string,
   id: string,
   patch: Partial<
     Pick<
@@ -129,6 +144,7 @@ export async function updateMemberById(
   const coll = await getColl();
   const filter: Filter<MemberDocument> = {
     _id: new ObjectId(id),
+    clubId,
     status: "active",
   };
   const setPayload = { ...patch };
@@ -144,16 +160,18 @@ export async function updateMemberById(
 }
 
 export async function insertActiveMember(
+  clubId: string,
   base: Omit<
     MemberDocument,
-    "_id" | "status" | "memberId" | "appliedAt" | "createdAt" | "updatedAt" | "joinDate"
+    "_id" | "clubId" | "status" | "memberId" | "appliedAt" | "createdAt" | "updatedAt" | "joinDate"
   > & { role: MemberRole; joinDate: string },
 ): Promise<ObjectId> {
   const coll = await getColl();
-  const memberId = await nextMemberIdString();
+  const memberId = await nextMemberIdString(clubId);
   const now = new Date();
   const doc: Omit<MemberDocument, "_id"> = {
     ...base,
+    clubId,
     status: "active",
     memberId,
     appliedAt: now,
@@ -164,14 +182,14 @@ export async function insertActiveMember(
   return insertedId;
 }
 
-export async function approvePendingMember(id: string, role?: MemberRole): Promise<MemberDocument | null> {
+export async function approvePendingMember(clubId: string, id: string, role?: MemberRole): Promise<MemberDocument | null> {
   if (!ObjectId.isValid(id)) return null;
   const coll = await getColl();
   const oid = new ObjectId(id);
-  const pending = await coll.findOne({ _id: oid, status: "pending" });
+  const pending = await coll.findOne({ _id: oid, clubId, status: "pending" });
   if (!pending) return null;
 
-  const memberId = await nextMemberIdString();
+  const memberId = await nextMemberIdString(clubId);
   const now = new Date();
   const joinDate = pending.joinDate ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
@@ -185,20 +203,21 @@ export async function approvePendingMember(id: string, role?: MemberRole): Promi
     },
   };
 
-  const out = await coll.findOneAndUpdate({ _id: oid, status: "pending" }, update, {
+  const out = await coll.findOneAndUpdate({ _id: oid, clubId, status: "pending" }, update, {
     returnDocument: "after",
   });
   return out;
 }
 
-export async function getAssignedRoles(): Promise<MemberRole[]> {
+export async function getAssignedRoles(clubId: string): Promise<MemberRole[]> {
   const coll = await getColl();
   // Find distinct roles from active members, filter out 'Member'
-  const roles = await coll.distinct("role", { status: "active" }) as MemberRole[];
+  const roles = await coll.distinct("role", { status: "active", clubId }) as MemberRole[];
   return roles.filter(r => r && r !== "Member");
 }
 
 export async function checkExistingCredentials(
+  clubId: string,
   nic?: string,
   email?: string,
   phone?: string
@@ -214,6 +233,7 @@ export async function checkExistingCredentials(
 
   const docs = await coll
     .find({
+      clubId,
       status: { $in: ["active", "pending"] as MemberStatus[] },
       $or: conditions,
     })
