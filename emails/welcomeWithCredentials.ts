@@ -1,17 +1,27 @@
 import { buildHtml, type EmailTemplate } from "./base";
 
 interface WelcomeCredentialsOpts {
-  firstName:  string;
-  lastName:   string;
-  memberId:   string;
-  email:      string;
-  password:   string;
-  loginUrl:   string;
-  clubName?:  string;
+  firstName: string;
+  lastName: string;
+  memberId: string;
+  email: string;
+  password: string;
+  loginUrl: string;
+  clubName?: string;
 }
 
-export function welcomeWithCredentials(opts: WelcomeCredentialsOpts): EmailTemplate {
-  const { firstName, lastName, memberId, email, password, loginUrl, clubName = "Teamnode Youth Club" } = opts;
+export function welcomeWithCredentials(
+  opts: WelcomeCredentialsOpts,
+): EmailTemplate {
+  const {
+    firstName,
+    lastName,
+    memberId,
+    email,
+    password,
+    loginUrl,
+    clubName = "Teamnode Club",
+  } = opts;
   const fullName = `${firstName} ${lastName}`.trim();
 
   const subject = `Welcome to ${clubName}! Your member account is ready 🎉`;
@@ -35,7 +45,7 @@ The ${clubName} Team`;
 
   const html = buildHtml({
     previewText: `Welcome to ${clubName}! Your account is ready.`,
-    heading:     `Welcome, ${firstName}! 🎉`,
+    heading: `Welcome, ${firstName}! 🎉`,
     bodyHtml: `
       <p>Congratulations <strong>${fullName}</strong>! Your membership application has been approved and your account is now active.</p>
 
@@ -63,8 +73,8 @@ The ${clubName} Team`;
         ⚠️ <strong>Please change your password</strong> after your first login for security.
       </p>
     `,
-    ctaLabel:   "Sign In to Member Portal",
-    ctaUrl:     loginUrl,
+    ctaLabel: "Sign In to Member Portal",
+    ctaUrl: loginUrl,
     footerNote: `Member ID: ${memberId} · This email contains sensitive login information. Please keep it safe.`,
   });
 
