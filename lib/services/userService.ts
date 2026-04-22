@@ -105,11 +105,6 @@ export async function createMemberUser(
   return id.toString();
 }
 
-/** Generate a human-readable temporary password, e.g. "Teamnode@483920" */
-export function generateTempPassword(): string {
-  const digits = Math.floor(100000 + Math.random() * 900000).toString();
-  return `Teamnode@${digits}`;
-}
 
 // ─── Password management ──────────────────────────────────────────────────────
 

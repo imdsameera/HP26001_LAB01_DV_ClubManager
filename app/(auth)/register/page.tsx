@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { 
   UserCircle2, 
   Building2, 
@@ -58,14 +58,36 @@ function RegisterPageContent() {
   const [publicEmail, setPublicEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // Setup mode check - Only auto-skip step 1 if explicitly in setup mode AND session exists
+  // Setup mode check & Session Repair
   useEffect(() => {
-    if (isSetupMode && session?.user) {
-      setStep(2);
-      setName(session.user.name || "");
-      setEmail(session.user.email || "");
-    }
-  }, [isSetupMode, session]);
+    const repairSession = async () => {
+      if (isSetupMode && session?.user && !(session.user as any).slug) {
+        setLoading(true);
+        try {
+          const res = await fetch("/api/auth/repair-handle");
+          const data = await res.json();
+          if (data.ok && data.slug) {
+            // Found a club! Repair and redirect
+            await update({ slug: data.slug, status: "active" });
+            router.push(`/${data.slug}`);
+            router.refresh();
+            return;
+          }
+        } catch (e) {
+          console.error("Session repair failed:", e);
+        } finally {
+          setLoading(false);
+        }
+        
+        // If repair failed, proceed to Step 2
+        setStep(2);
+        setName(session.user.name || "");
+        setEmail(session.user.email || "");
+      }
+    };
+
+    repairSession();
+  }, [isSetupMode, session, update, router]);
 
   // Email availability check
   useEffect(() => {
@@ -505,6 +527,17 @@ function RegisterPageContent() {
           Already have an account? Sign in
           <ArrowRight size={16} />
         </Link>
+
+        {isSetupMode && session && (
+          <div className="mt-6 border-t border-slate-100 pt-6">
+             <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="text-[12px] font-bold uppercase tracking-widest text-slate-400 hover:text-red-500 transition-colors"
+             >
+                Not your account? Sign Out
+             </button>
+          </div>
+        )}
       </div>
     </div>
   );

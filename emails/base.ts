@@ -2,16 +2,16 @@
 
 export interface EmailTemplate {
   subject: string;
-  text:    string;
-  html:    string;
+  text: string;
+  html: string;
 }
 
 interface BuildOptions {
   previewText: string;
-  heading:     string;
-  bodyHtml:    string;
-  ctaLabel?:   string;
-  ctaUrl?:     string;
+  heading: string;
+  bodyHtml: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
   footerNote?: string;
   accentColor?: string;
 }
@@ -27,13 +27,14 @@ export function buildHtml(opts: BuildOptions): string {
     accentColor = "#0066FF",
   } = opts;
 
-  const cta = ctaLabel && ctaUrl
-    ? `<tr><td align="center" style="padding:8px 32px 28px">
+  const cta =
+    ctaLabel && ctaUrl
+      ? `<tr><td align="center" style="padding:8px 32px 28px">
         <a href="${ctaUrl}" style="display:inline-block;background:${accentColor};color:#ffffff;
            text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;
            border-radius:8px;letter-spacing:0.02em">${ctaLabel}</a>
        </td></tr>`
-    : "";
+      : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -51,7 +52,7 @@ export function buildHtml(opts: BuildOptions): string {
             <td style="width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:8px;
                        text-align:center;line-height:36px;font-size:18px;font-weight:900;color:#fff">H</td>
             <td style="padding-left:12px">
-              <p style="margin:0;font-size:16px;font-weight:700;color:#fff">Teamnode Youth Club</p>
+              <p style="margin:0;font-size:16px;font-weight:700;color:#fff">Teamnode</p>
               <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,.7)">Club Management System</p>
             </td>
           </tr></table>
@@ -72,7 +73,7 @@ export function buildHtml(opts: BuildOptions): string {
           ${footerNote ?? "This email was sent automatically by Teamnode Youth Club's management system."}
         </td></tr>
       </table>
-      <p style="margin:20px 0 0;font-size:11px;color:#cbd5e1">Teamnode Youth Club — Powered by Teamnode Global</p>
+      <p style="margin:20px 0 0;font-size:11px;color:#cbd5e1">Powered by Teamnode</p>
     </td></tr>
   </table>
 </body></html>`;
@@ -80,8 +81,13 @@ export function buildHtml(opts: BuildOptions): string {
 
 export function textToHtml(text: string): string {
   return text
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
     .split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 16px 0;line-height:1.6">${p.replace(/\n/g, "<br/>")}</p>`)
+    .map(
+      (p) =>
+        `<p style="margin:0 0 16px 0;line-height:1.6">${p.replace(/\n/g, "<br/>")}</p>`,
+    )
     .join("\n");
 }
