@@ -75,10 +75,10 @@ export default function MemberFormModal({
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        // Approximate splitting name for edit
+        // Exact fields from DB or fallback approximate splitting name for edit
         const parts = initialData.name.split(" ");
-        const lastName = parts.length > 1 ? parts.pop() || "" : "";
-        const firstOrInit = parts.join(" ") || initialData.name;
+        const approxLastName = parts.length > 1 ? parts.pop() || "" : "";
+        const approxFirstName = parts.join(" ") || initialData.name;
 
         // Try extracting country code from phone if it exists. Simplified parsing.
         let pCode = "+94";
@@ -102,9 +102,9 @@ export default function MemberFormModal({
         }
 
         setForm({
-          initials: "",
-          firstName: firstOrInit,
-          lastName,
+          initials: initialData.initials || "",
+          firstName: initialData.firstName || approxFirstName,
+          lastName: initialData.lastName || approxLastName,
           role: initialData.role,
           nic: initialData.nic,
           email: initialData.email || "",

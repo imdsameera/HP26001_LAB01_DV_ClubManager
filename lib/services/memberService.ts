@@ -32,6 +32,9 @@ export async function getAssignedRoles(clubId: string): Promise<MemberRole[]> {
 /** Mirrors UI `Member` from MemberDetailPanel (no financials from API). */
 export interface MemberApiRecord {
   id: string;
+  initials?: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   avatarUrl?: string;
   memberId: string;
@@ -76,6 +79,9 @@ function documentToMemberApi(doc: MemberDocument): MemberApiRecord | null {
   if (doc.status !== "active" || !doc.memberId) return null;
   return {
     id: doc._id.toHexString(),
+    initials: doc.initials,
+    firstName: doc.firstName,
+    lastName: doc.lastName,
     name: buildDisplayName(doc),
     avatarUrl: doc.avatarUrl,
     memberId: doc.memberId,

@@ -32,6 +32,9 @@ export interface MemberFinancials {
 export interface Member {
   id: string;
   clubId: string;
+  initials?: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   avatarUrl?: string;
   memberId: string;
