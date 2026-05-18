@@ -19,6 +19,7 @@ const ROLE_BADGE: Record<Role, string> = {
   President: "bg-violet-100 text-violet-700",
   "Vice President": "bg-blue-100   text-blue-700",
   Secretary: "bg-emerald-100 text-emerald-700",
+  "Vice Secretary": "bg-teal-100 text-teal-700",
   Treasurer: "bg-amber-100  text-amber-700",
   Member: "bg-gray-100   text-gray-500",
 };
