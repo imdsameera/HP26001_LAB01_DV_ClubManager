@@ -66,9 +66,9 @@ export interface PendingApprovalRow {
   dateApplied: string;
 }
 
-function initialsFromNames(firstName: string, lastName: string): string {
-  const f = firstName.trim();
-  const l = lastName.trim();
+function initialsFromNames(firstName?: string, lastName?: string): string {
+  const f = (firstName || "").trim();
+  const l = (lastName || "").trim();
   const firstChar = f ? f[0].toUpperCase() : "";
   const secondChar = l ? l[0].toUpperCase() : "";
   const result = firstChar + secondChar;
@@ -98,16 +98,18 @@ function documentToMemberApi(doc: MemberDocument): MemberApiRecord | null {
 
 function pendingToRow(doc: MemberDocument): PendingApprovalRow {
   const name = buildDisplayName(doc);
-  const y = doc.appliedAt.getFullYear();
-  const m = String(doc.appliedAt.getMonth() + 1).padStart(2, "0");
-  const d = String(doc.appliedAt.getDate()).padStart(2, "0");
+  const appliedDate = doc.appliedAt ? new Date(doc.appliedAt) : new Date();
+  const validDate = isNaN(appliedDate.getTime()) ? new Date() : appliedDate;
+  const y = validDate.getFullYear();
+  const m = String(validDate.getMonth() + 1).padStart(2, "0");
+  const d = String(validDate.getDate()).padStart(2, "0");
   return {
     id: doc._id.toHexString(),
-    initials: initialsFromNames(doc.firstName, doc.lastName),
-    firstName: doc.firstName,
-    lastName: doc.lastName,
+    initials: doc.initials || initialsFromNames(doc.firstName, doc.lastName),
+    firstName: doc.firstName || "",
+    lastName: doc.lastName || "",
     name,
-    nic: doc.nic,
+    nic: doc.nic || "",
     email: doc.email || undefined,
     phoneCode: doc.phoneCode,
     phone: doc.phone,
