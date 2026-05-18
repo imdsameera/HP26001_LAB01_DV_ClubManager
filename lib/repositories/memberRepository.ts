@@ -78,41 +78,49 @@ export async function insertMember(
   return insertedId;
 }
 
+function clubIdFilter(clubId: string | ObjectId): any {
+  const str = typeof clubId === 'string' ? clubId : (clubId as any).toString();
+  if (ObjectId.isValid(str)) {
+    return { $in: [str, new ObjectId(str)] };
+  }
+  return clubId;
+}
+
 export async function findMemberById(clubId: string, id: string): Promise<MemberDocument | null> {
   if (!ObjectId.isValid(id)) return null;
   const coll = await getColl();
-  return coll.findOne({ _id: new ObjectId(id), clubId });
+  return coll.findOne({ _id: new ObjectId(id), clubId: clubIdFilter(clubId) });
 }
 
 export async function findMembersByStatus(clubId: string, status: MemberStatus): Promise<MemberDocument[]> {
   const coll = await getColl();
   const sort: Sort = status === "pending" ? { appliedAt: -1 } : { joinDate: -1 };
-  return coll.find({ status, clubId }).sort(sort).toArray();
+  return coll.find({ status, clubId: clubIdFilter(clubId) }).sort(sort).toArray();
 }
 
 export async function findMemberByMemberId(clubId: string, memberId: string): Promise<MemberDocument | null> {
   const coll = await getColl();
-  return coll.findOne({ memberId, clubId, status: "active" });
+  return coll.findOne({ memberId, clubId: clubIdFilter(clubId), status: "active" });
 }
 
 export async function findMemberByEmail(clubId: string, email: string): Promise<MemberDocument | null> {
   const coll = await getColl();
   return coll.findOne({ 
     email: { $regex: new RegExp(`^${email.trim()}$`, "i") }, 
-    clubId,
+    clubId: clubIdFilter(clubId),
     status: "active" 
   });
 }
 
 export async function countMembersByStatus(clubId: string, status: MemberStatus): Promise<number> {
   const coll = await getColl();
-  return coll.countDocuments({ status, clubId });
+  return coll.countDocuments({ status, clubId: clubIdFilter(clubId) });
 }
 
 export async function deleteMemberById(clubId: string, id: string): Promise<boolean> {
   if (!ObjectId.isValid(id)) return false;
   const coll = await getColl();
-  const r = await coll.deleteOne({ _id: new ObjectId(id), clubId });
+  const r = await coll.deleteOne({ _id: new ObjectId(id), clubId: clubIdFilter(clubId) });
   return r.deletedCount === 1;
 }
 
@@ -144,7 +152,7 @@ export async function updateMemberById(
   const coll = await getColl();
   const filter: Filter<MemberDocument> = {
     _id: new ObjectId(id),
-    clubId,
+    clubId: clubIdFilter(clubId),
     status: "active",
   };
   const setPayload = { ...patch };
@@ -186,7 +194,7 @@ export async function approvePendingMember(clubId: string, id: string, role?: Me
   if (!ObjectId.isValid(id)) return null;
   const coll = await getColl();
   const oid = new ObjectId(id);
-  const pending = await coll.findOne({ _id: oid, clubId, status: "pending" });
+  const pending = await coll.findOne({ _id: oid, clubId: clubIdFilter(clubId), status: "pending" });
   if (!pending) return null;
 
   const memberId = await nextMemberIdString(clubId);
@@ -203,7 +211,7 @@ export async function approvePendingMember(clubId: string, id: string, role?: Me
     },
   };
 
-  const out = await coll.findOneAndUpdate({ _id: oid, clubId, status: "pending" }, update, {
+  const out = await coll.findOneAndUpdate({ _id: oid, clubId: clubIdFilter(clubId), status: "pending" }, update, {
     returnDocument: "after",
   });
   return out;
@@ -212,7 +220,7 @@ export async function approvePendingMember(clubId: string, id: string, role?: Me
 export async function getAssignedRoles(clubId: string): Promise<MemberRole[]> {
   const coll = await getColl();
   // Find distinct roles from active members, filter out 'Member'
-  const roles = await coll.distinct("role", { status: "active", clubId }) as MemberRole[];
+  const roles = await coll.distinct("role", { status: "active", clubId: clubIdFilter(clubId) }) as MemberRole[];
   return roles.filter(r => r && r !== "Member");
 }
 
@@ -233,7 +241,7 @@ export async function checkExistingCredentials(
 
   const docs = await coll
     .find({
-      clubId,
+      clubId: clubIdFilter(clubId),
       status: { $in: ["active", "pending"] as MemberStatus[] },
       $or: conditions,
     })
