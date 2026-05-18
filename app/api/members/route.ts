@@ -7,6 +7,12 @@ import {
   listActiveMembersApi,
   listPendingApprovals,
 } from "@/lib/services/memberService";
+import { findMemberById } from "@/lib/repositories/memberRepository";
+import { getSettings } from "@/lib/services/settingsService";
+import { createMemberUser } from "@/lib/services/userService";
+import { generateSecurePassword } from "@/lib/utils";
+import { sendEmail } from "@/lib/utils/mailer";
+import { welcomeWithCredentials } from "@/emails";
 import { fileToDataUrl } from "@/lib/utils/fileToDataUrl";
 import { adminFieldsFromFormData, validateAdminMemberFields } from "@/lib/validators/member";
 
@@ -38,6 +44,7 @@ export async function GET(request: Request) {
 
     if (status === "pending") {
       const pending = await listPendingApprovals(clubId);
+      require("fs").writeFileSync("scratch/debug_pending.json", JSON.stringify(pending, null, 2));
       return NextResponse.json({ pending });
     }
     const members = await listActiveMembersApi(clubId);
@@ -67,14 +74,51 @@ export async function POST(request: Request) {
 
     const avatar = fd.get("avatar");
     let avatarDataUrl: string | undefined;
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarDataUrl = await fileToDataUrl(avatar);
+    if (avatar && typeof avatar !== "string" && avatar.size > 0) {
+      avatarDataUrl = await fileToDataUrl(avatar as File);
     }
 
     const result = await createActiveMember(clubId, fields, avatarDataUrl);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
+
+    // Auto-create member login account + send credentials email
+    try {
+      const [doc, settings] = await Promise.all([
+        findMemberById(clubId, result.id),
+        getSettings(clubId),
+      ]);
+
+      if (doc && doc.email) {
+        const tempPassword = generateSecurePassword();
+        await createMemberUser(
+          clubId,
+          doc.email,
+          `${doc.firstName} ${doc.lastName}`.trim(),
+          doc.memberId ?? result.id,
+          result.id,
+          tempPassword,
+        );
+
+        if (settings.newMemberAlerts) {
+          const loginUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/login`;
+          const template = welcomeWithCredentials({
+            firstName:  doc.firstName,
+            lastName:   doc.lastName,
+            memberId:   doc.memberId ?? result.id,
+            email:      doc.email,
+            password:   tempPassword,
+            loginUrl,
+            clubName:   settings.senderName || "Teamnode Youth Club",
+          });
+          await sendEmail({ to: doc.email, ...template });
+        }
+      }
+    } catch (emailErr) {
+      console.error("[createActiveMember] Error during account creation / email:", emailErr);
+    }
+
     return NextResponse.json({ ok: true, id: result.id });
   } catch (e) {
     console.error(e);

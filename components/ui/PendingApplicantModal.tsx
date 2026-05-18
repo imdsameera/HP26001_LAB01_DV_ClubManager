@@ -145,14 +145,13 @@ export default function PendingApplicantModal({
               setIsRejecting(false);
             }
           }}
-          className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 hover:text-red-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center rounded-[10px] bg-red-100 px-6 py-2.5 text-[15px] font-semibold text-red-600 transition hover:bg-red-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]"
         >
           {isRejecting ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-t-red-600" />
           ) : (
-            <XCircle size={16} />
+            "Reject"
           )}
-          Reject Application
         </button>
         <button
           type="button"
@@ -165,14 +164,13 @@ export default function PendingApplicantModal({
               setIsApproving(false);
             }
           }}
-          className="flex items-center gap-2 rounded-lg bg-[#0066FF] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed min-w-[160px] justify-center"
+          className="flex items-center justify-center rounded-[10px] bg-[#0066FF] px-6 py-2.5 text-[15px] font-semibold text-white transition hover:bg-blue-700 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed min-w-[120px]"
         >
           {isApproving ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
           ) : (
-            <CheckCircle size={16} />
+            "Approve"
           )}
-          {isApproving ? "Approving..." : "Approve & Save"}
         </button>
       </div>
     </Modal>

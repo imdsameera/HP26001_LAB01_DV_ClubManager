@@ -165,6 +165,7 @@ export async function createPendingFromJoin(
     createdAt: now,
     updatedAt: now,
   };
+  if (avatarDataUrl) (doc as any).avatarUrl = avatarDataUrl;
   const insertedId = await insertMember(clubId, doc);
 
   // Trigger notification for admins

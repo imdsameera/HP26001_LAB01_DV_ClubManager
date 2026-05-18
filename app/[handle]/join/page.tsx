@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   Trash2,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/ui/PhoneInput";
@@ -26,7 +26,11 @@ const INITIAL_FORM = {
   address: "",
 };
 
-export default function JoinPage({ params }: { params: Promise<{ handle: string }> }) {
+export default function JoinPage({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -34,6 +38,7 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
   const [dragging, setDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [initialsError, setInitialsError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -47,27 +52,41 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
   const formatName = (val: string) => {
     return val
       .split(" ")
-      .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : "")
+      .map((word) =>
+        word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : "",
+      )
       .join(" ");
   };
 
   // -- Handlers --
-  const handleField = (key: keyof typeof form) => (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setForm((prev) => ({ ...prev, [key]: e.target.value }));
-  };
+  const handleField =
+    (key: keyof typeof form) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    };
 
   const handleBlur = (key: keyof typeof form) => () => {
     if (key === "initials" && form.initials) {
-      setForm(prev => ({ ...prev, initials: formatInitials(prev.initials) }));
+      const lettersOnly = form.initials.replace(/[^a-zA-Z]/g, "");
+      const hasLongWord = /[a-zA-Z]{3,}/.test(form.initials);
+      if (hasLongWord || lettersOnly.length > 8) {
+        setInitialsError(
+          "Please enter initials with spaces between them (e.g. A. B.).",
+        );
+      } else {
+        setInitialsError(null);
+        setForm((prev) => ({
+          ...prev,
+          initials: formatInitials(prev.initials),
+        }));
+      }
     } else if ((key === "firstName" || key === "lastName") && form[key]) {
-      setForm(prev => ({ ...prev, [key]: formatName(String(prev[key])) }));
+      setForm((prev) => ({ ...prev, [key]: formatName(String(prev[key])) }));
     }
   };
 
   const handlePhoneChange = (val: string) => {
-    setForm(prev => {
+    setForm((prev) => {
       const updates = { ...prev, phone: val };
       if (sameAsPhone) updates.whatsapp = val;
       return updates;
@@ -75,7 +94,7 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
   };
 
   const handlePhoneCodeChange = (val: string) => {
-    setForm(prev => {
+    setForm((prev) => {
       const updates = { ...prev, phoneCode: val };
       if (sameAsPhone) updates.whatsappCode = val;
       return updates;
@@ -111,6 +130,19 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
     e.preventDefault();
     setFormError(null);
     setIsSubmitting(true);
+
+    const lettersOnly = form.initials.replace(/[^a-zA-Z]/g, "");
+    const hasLongWord = /[a-zA-Z]{3,}/.test(form.initials);
+    if (hasLongWord || lettersOnly.length > 8) {
+      setInitialsError(
+        "Please enter initials with spaces or dots between them (e.g. A. B.).",
+      );
+      setIsSubmitting(false);
+      return;
+    } else {
+      setInitialsError(null);
+    }
+
     try {
       const searchParams = new URLSearchParams(window.location.search);
       const queryClubId = searchParams.get("clubId");
@@ -138,10 +170,14 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setFormError(typeof body.error === "string" ? body.error : "Could not submit application. Please check your credentials and try again.");
+        setFormError(
+          typeof body.error === "string"
+            ? body.error
+            : "Could not submit application. Please check your credentials and try again.",
+        );
         return;
       }
-      
+
       router.push(`/${handle}/join/pending`);
     } finally {
       setIsSubmitting(false);
@@ -168,10 +204,11 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
         {/* Card */}
         <div className="w-full rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 shadow-xl shadow-gray-100/50">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full">
-            
             {/* Avatar Upload */}
             <div className="w-full">
-              <label className="mb-2 block text-sm font-medium text-slate-700">Profile Photo</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Profile Photo
+              </label>
               <div
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
@@ -213,7 +250,9 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
                     <div className="flex flex-col justify-center items-center flex-1 gap-2 border flex items-center justify-center p-3 rounded-lg bg-emerald-100 border-emerald-200 font-medium text-emerald-700 w-full sm:w-auto overflow-hidden">
                       <p className="flex w-full items-center justify-center gap-1.5 text-sm break-all">
                         <CheckCircle2 size={16} className="shrink-0" />
-                        <span className="truncate max-w-[150px] sm:max-w-[200px]">{avatarFile?.name}</span>
+                        <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                          {avatarFile?.name}
+                        </span>
                       </p>
                       <button
                         type="button"
@@ -229,8 +268,14 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
                   </div>
                 ) : (
                   <>
-                    <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors duration-200 ${dragging ? "bg-[#0066FF] text-white" : "bg-white shadow-sm ring-1 ring-gray-200 text-[#0066FF]"}`}>
-                      {dragging ? <Upload size={24} /> : <ImagePlus size={24} />}
+                    <div
+                      className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors duration-200 ${dragging ? "bg-[#0066FF] text-white" : "bg-white shadow-sm ring-1 ring-gray-200 text-[#0066FF]"}`}
+                    >
+                      {dragging ? (
+                        <Upload size={24} />
+                      ) : (
+                        <ImagePlus size={24} />
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-slate-800">
@@ -253,15 +298,35 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
                 Name
               </label>
               <div className="flex w-full flex-1 flex-col sm:flex-row gap-3 min-w-0">
-                <input
-                  type="text"
-                  placeholder="Initials"
-                  value={form.initials}
-                  onChange={handleField("initials")}
-                  onBlur={handleBlur("initials")}
-                  required
-                  className="w-full sm:w-24 shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
-                />
+                <div className="relative w-full sm:w-24 shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Initials"
+                    value={form.initials}
+                    onChange={(e) => {
+                      handleField("initials")(e);
+                      if (initialsError) setInitialsError(null);
+                    }}
+                    onBlur={handleBlur("initials")}
+                    required
+                    className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-700 placeholder:text-gray-400 outline-none transition-colors ${
+                      initialsError
+                        ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50/50"
+                        : "border-gray-300 hover:border-gray-400 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
+                    }`}
+                  />
+                  {initialsError && (
+                    <div className="absolute left-0 top-full z-10 mt-2 w-[220px] rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 shadow-lg animate-in fade-in slide-in-from-top-1">
+                      <div className="absolute -top-1 left-4 h-2 w-2 rotate-45 border-l border-t border-red-200 bg-red-50"></div>
+                      <div className="relative flex items-start gap-1.5">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-500" />
+                        <span className="font-medium leading-tight">
+                          {initialsError}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <input
                   type="text"
                   placeholder="First Name"
@@ -273,7 +338,7 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
                 />
                 <input
                   type="text"
-                  placeholder="Last Name (Optional)"
+                  placeholder="Last Name"
                   value={form.lastName}
                   onChange={handleField("lastName")}
                   onBlur={handleBlur("lastName")}
@@ -285,7 +350,10 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
             {/* NIC */}
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
               <label className="w-full sm:w-36 shrink-0 text-sm font-medium text-slate-700">
-                NIC <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                NIC{" "}
+                <span className="text-gray-400 font-normal text-xs">
+                  (optional)
+                </span>
               </label>
               <div className="flex w-full flex-1 min-w-0">
                 <input
@@ -332,13 +400,17 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
                       required
                     />
                   </div>
-                  
+
                   <div className="w-full lg:w-1/2 min-w-0">
                     <PhoneInput
                       phoneValue={form.whatsapp}
-                      onPhoneChange={(val) => setForm(prev => ({ ...prev, whatsapp: val }))}
+                      onPhoneChange={(val) =>
+                        setForm((prev) => ({ ...prev, whatsapp: val }))
+                      }
                       countryDialCode={form.whatsappCode}
-                      onCountryChange={(val) => setForm(prev => ({ ...prev, whatsappCode: val }))}
+                      onCountryChange={(val) =>
+                        setForm((prev) => ({ ...prev, whatsappCode: val }))
+                      }
                       placeholder="WhatsApp (Optional)"
                       disabled={sameAsPhone}
                     />
@@ -391,7 +463,9 @@ export default function JoinPage({ params }: { params: Promise<{ handle: string 
                 <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
                   <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-red-800">Check Your Details</p>
+                    <p className="text-sm font-semibold text-red-800">
+                      Check Your Details
+                    </p>
                     <p className="mt-1 text-sm text-red-600">{formError}</p>
                   </div>
                 </div>

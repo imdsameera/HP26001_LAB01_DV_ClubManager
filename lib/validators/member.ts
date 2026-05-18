@@ -5,6 +5,7 @@ const ROLES: MemberRole[] = [
   "President",
   "Vice President",
   "Secretary",
+  "Vice Secretary",
   "Treasurer",
 ];
 
