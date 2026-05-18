@@ -13,6 +13,7 @@ export type MemberRole =
   | "President"
   | "Vice President"
   | "Secretary"
+  | "Vice Secretary"
   | "Treasurer";
 
 export interface MemberDocument {

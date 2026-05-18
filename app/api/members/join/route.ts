@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createPendingFromJoin } from "@/lib/services/memberService";
 import { fileToDataUrl } from "@/lib/utils/fileToDataUrl";
 import { joinFieldsFromFormData, validateJoinFields } from "@/lib/validators/member";
+import { listAdminUsers } from "@/lib/repositories/userRepository";
+import { getSettings } from "@/lib/services/settingsService";
+import { sendEmail } from "@/lib/utils/mailer";
+import { newApplicantNotification } from "@/emails";
 
 export async function POST(request: Request) {
   try {
@@ -14,9 +18,17 @@ export async function POST(request: Request) {
 
     const avatar = fd.get("avatar");
     let avatarDataUrl: string | undefined;
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarDataUrl = await fileToDataUrl(avatar);
+    if (avatar && typeof avatar !== "string" && avatar.size > 0) {
+      avatarDataUrl = await fileToDataUrl(avatar as File);
     }
+    require("fs").writeFileSync("scratch/debug_join.json", JSON.stringify({
+      isAvatarPresent: !!avatar,
+      type: typeof avatar,
+      isString: typeof avatar === "string",
+      hasSize: avatar && typeof avatar === "object" ? "size" in avatar : false,
+      size: avatar && typeof avatar === "object" ? (avatar as any).size : undefined,
+      avatarDataUrlLength: avatarDataUrl ? avatarDataUrl.length : 0
+    }, null, 2));
 
     // Resolve clubId
     // 1. Check form data
@@ -74,6 +86,38 @@ export async function POST(request: Request) {
     }
 
     console.log(`[Join API] Successfully created pending member for club: ${resolvedClubId}`);
+
+    // Notify Admins asynchronously
+    try {
+      const [settings, admins] = await Promise.all([
+        getSettings(resolvedClubId),
+        listAdminUsers(resolvedClubId)
+      ]);
+      
+      const targetAdmins = admins.filter(a => a.role === "SUPER_ADMIN" || a.role === "ADMIN");
+      
+      if (targetAdmins.length > 0) {
+        const dashboardUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/${handle || 'demo'}`;
+        const template = newApplicantNotification({
+          applicantName: `${fields.firstName} ${fields.lastName}`.trim(),
+          applicantEmail: fields.email,
+          clubName: settings.clubName || "Teamnode Club",
+          dashboardUrl
+        });
+
+        Promise.allSettled(
+          targetAdmins.map(admin => sendEmail({ to: admin.email, ...template }))
+        ).then(results => {
+          const failed = results.filter(r => r.status === "rejected");
+          if (failed.length > 0) {
+            console.error(`[Join API] Failed to send ${failed.length} applicant notifications`);
+          }
+        });
+      }
+    } catch (notifyErr) {
+      console.error("[Join API] Failed to process applicant notifications:", notifyErr);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);

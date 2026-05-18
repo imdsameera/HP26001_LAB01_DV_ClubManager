@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, Phone, MessageCircle, CreditCard, Home, Mail, Edit2, AlertTriangle, ExternalLink, Copy, Check } from "lucide-react";
+import { X, Phone, MessageCircle, CreditCard, Home, Mail, Edit2, AlertTriangle, ExternalLink, Copy, Check, Send } from "lucide-react";
 import { getInitials } from "@/lib/utils/nameUtils";
 
 // ---------------------------------------------------------------------------
 // Shared Types & Constants
 // ---------------------------------------------------------------------------
-export type Role = "Member" | "President" | "Vice President" | "Secretary" | "Treasurer";
+export type Role = "Member" | "President" | "Vice President" | "Secretary" | "Vice Secretary" | "Treasurer";
 
 export interface MonthlyContribution {
   month: string;
@@ -32,6 +32,9 @@ export interface MemberFinancials {
 export interface Member {
   id: string;
   clubId: string;
+  initials?: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   avatarUrl?: string;
   memberId: string;
@@ -61,6 +64,7 @@ const ROLE_COLOR: Record<Role, { bg: string; text: string }> = {
   "President":      { bg: "#EDE9FE", text: "#6D28D9" },
   "Vice President": { bg: "#DBEAFE", text: "#1E40AF" },
   "Secretary":      { bg: "#D1FAE5", text: "#065F46" },
+  "Vice Secretary": { bg: "#FCE7F3", text: "#9D174D" },
   "Treasurer":      { bg: "#FEF3C7", text: "#92400E" },
   "Member":         { bg: "#F3F4F6", text: "#6B7280" },
 };
@@ -129,7 +133,35 @@ interface MemberDetailPanelProps {
 export default function MemberDetailPanel({ member, onClose, onRemove, onEdit }: MemberDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<"Overview" | "Finance" | "Attendance">("Overview");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showInviteConfirm, setShowInviteConfirm] = useState(false);
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [justSentInvite, setJustSentInvite] = useState(false);
+
+  const handleSendInvite = async () => {
+    if (!member?.email || isSendingInvite || justSentInvite) return;
+    setIsSendingInvite(true);
+    try {
+      const res = await fetch(`/api/members/${member.id}/invite`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to send invite");
+        setIsSendingInvite(false);
+      } else {
+        setIsSendingInvite(false);
+        setJustSentInvite(true);
+        setTimeout(() => {
+          setJustSentInvite(false);
+          setShowInviteConfirm(false);
+        }, 1500);
+      }
+    } catch (e) {
+      alert("Error sending invite");
+      setIsSendingInvite(false);
+    }
+  };
 
   if (!member) return null;
 
@@ -203,12 +235,22 @@ export default function MemberDetailPanel({ member, onClose, onRemove, onEdit }:
                 </div>
                 <div className="flex flex-col justify-center">
                   <h3 className="text-xl font-bold text-slate-800">{member.name}</h3>
-                  <span
-                    className="mt-1.5 inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider"
-                    style={{ background: roleColor.bg, color: roleColor.text }}
-                  >
-                    {member.role}
-                  </span>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span
+                      className="inline-flex w-fit rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider"
+                      style={{ background: roleColor.bg, color: roleColor.text }}
+                    >
+                      {member.role}
+                    </span>
+                    {member.email && (
+                      <button
+                        onClick={() => setShowInviteConfirm(true)}
+                        className="ml-3 inline-flex items-center gap-1 text-xs font-medium text-[#0066FF] hover:underline hover:text-blue-700 transition-colors"
+                      >
+                        Invite to Portal
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col items-center justify-center p-6 bg-gray-50/30">
@@ -404,6 +446,55 @@ export default function MemberDetailPanel({ member, onClose, onRemove, onEdit }:
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Invite Confirmation Overlay ───────────────── */}
+      {showInviteConfirm && (
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => {
+            if (!isSendingInvite && !justSentInvite) setShowInviteConfirm(false);
+          }}
+        >
+          <div 
+            className="w-full max-w-[320px] rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 mb-4">
+              <AlertTriangle className="h-7 w-7 text-amber-600" />
+            </div>
+            <h3 className="text-center text-lg font-bold text-slate-900">Send Portal Invite?</h3>
+            <p className="mt-2 text-center text-xs text-gray-500 leading-relaxed max-w-[260px] mx-auto">
+              This will generate a new password and email it to <strong className="text-slate-700">{member.name}</strong>. Their previous password will no longer work.
+            </p>
+            <div className="mt-6 flex flex-col gap-2.5">
+              <button 
+                onClick={handleSendInvite}
+                disabled={isSendingInvite || justSentInvite}
+                className={`w-full rounded-xl py-3 text-sm font-semibold text-white shadow-sm transition flex items-center justify-center gap-2 active:scale-95 disabled:opacity-90 disabled:active:scale-100 ${
+                  justSentInvite ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#0066FF] hover:bg-blue-700"
+                }`}
+              >
+                {isSendingInvite ? (
+                  <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Sending...</>
+                ) : justSentInvite ? (
+                  <><Check size={16} /> Sent Successfully</>
+                ) : (
+                  "Yes, Send Invite"
+                )}
+              </button>
+              {!justSentInvite && (
+                <button 
+                  onClick={() => setShowInviteConfirm(false)}
+                  disabled={isSendingInvite}
+                  className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:bg-gray-50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
         </div>
