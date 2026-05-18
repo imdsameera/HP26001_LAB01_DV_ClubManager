@@ -14,9 +14,17 @@ export async function POST(request: Request) {
 
     const avatar = fd.get("avatar");
     let avatarDataUrl: string | undefined;
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarDataUrl = await fileToDataUrl(avatar);
+    if (avatar && typeof avatar !== "string" && avatar.size > 0) {
+      avatarDataUrl = await fileToDataUrl(avatar as File);
     }
+    require("fs").writeFileSync("scratch/debug_join.json", JSON.stringify({
+      isAvatarPresent: !!avatar,
+      type: typeof avatar,
+      isString: typeof avatar === "string",
+      hasSize: avatar && typeof avatar === "object" ? "size" in avatar : false,
+      size: avatar && typeof avatar === "object" ? (avatar as any).size : undefined,
+      avatarDataUrlLength: avatarDataUrl ? avatarDataUrl.length : 0
+    }, null, 2));
 
     // Resolve clubId
     // 1. Check form data

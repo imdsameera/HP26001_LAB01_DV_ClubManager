@@ -26,8 +26,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const avatar = fd.get("avatar");
     let avatarDataUrl: string | undefined | null = undefined;
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarDataUrl = await fileToDataUrl(avatar);
+    if (avatar && typeof avatar !== "string" && avatar.size > 0) {
+      avatarDataUrl = await fileToDataUrl(avatar as File);
     } else {
       const clear = fd.get("clearAvatar");
       if (clear === "1" || clear === "true") {

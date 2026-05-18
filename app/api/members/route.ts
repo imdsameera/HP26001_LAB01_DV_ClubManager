@@ -38,6 +38,7 @@ export async function GET(request: Request) {
 
     if (status === "pending") {
       const pending = await listPendingApprovals(clubId);
+      require("fs").writeFileSync("scratch/debug_pending.json", JSON.stringify(pending, null, 2));
       return NextResponse.json({ pending });
     }
     const members = await listActiveMembersApi(clubId);
@@ -67,8 +68,8 @@ export async function POST(request: Request) {
 
     const avatar = fd.get("avatar");
     let avatarDataUrl: string | undefined;
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarDataUrl = await fileToDataUrl(avatar);
+    if (avatar && typeof avatar !== "string" && avatar.size > 0) {
+      avatarDataUrl = await fileToDataUrl(avatar as File);
     }
 
     const result = await createActiveMember(clubId, fields, avatarDataUrl);

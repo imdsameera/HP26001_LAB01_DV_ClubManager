@@ -168,7 +168,7 @@ function FieldRow({
           <span className="ml-1.5 text-[11px] text-gray-400">(optional)</span>
         )}
       </div>
-      <div className="flex-1">{children}</div>
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
 }
@@ -231,7 +231,7 @@ function GeneralProfileTab({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(`https://teamnode.app/${handle}/join`);
+    navigator.clipboard.writeText(`https://teamnode.imsameera.com/${handle}/join`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -261,10 +261,10 @@ function GeneralProfileTab({
         <FieldRow label="Club Handle (URL)">
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 text-sm">
-              teamnode.app/
+              teamnode.imsameera.com/
             </div>
             <input
-              className={`${INPUT_CLS} pl-[130px] pr-10`}
+              className={`${INPUT_CLS} pl-[200px] pr-10`}
               value={handle}
               onChange={(e) => onHandleChange(cleanHandle(e.target.value))}
               placeholder="my-club"
@@ -272,14 +272,19 @@ function GeneralProfileTab({
             <div className="absolute inset-y-0 right-0 flex items-center pr-3">
               {checkingHandle ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-[#0066FF]" />
-              ) : handle && (
-                handleAvailable === true ? <Check size={14} className="text-emerald-500" /> : 
-                handleAvailable === false ? <X size={14} className="text-red-500" /> : null
+              ) : (
+                handle &&
+                (handleAvailable === true ? (
+                  <Check size={14} className="text-emerald-500" />
+                ) : handleAvailable === false ? (
+                  <X size={14} className="text-red-500" />
+                ) : null)
               )}
             </div>
           </div>
           <p className="mt-1.5 text-[11px] text-gray-400">
-            This is your public URL identifier. Strictly lowercase alphanumeric and hyphens.
+            This is your public URL identifier. Strictly lowercase alphanumeric
+            and hyphens.
           </p>
         </FieldRow>
       </Card>
@@ -289,29 +294,29 @@ function GeneralProfileTab({
         description="Share this link with prospective members to join your club."
       >
         <FieldRow label="Public Join Link">
-           <div className="flex items-center gap-2">
-             <div className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 font-mono truncate">
-               https://teamnode.app/{handle}/join
-             </div>
-             <button 
-                onClick={handleCopy}
-                className={clsx(
-                   "flex h-9 min-w-[100px] items-center justify-center gap-1.5 rounded-lg border transition-all duration-200 text-xs font-semibold px-3 active:scale-95",
-                   copied 
-                     ? "bg-emerald-50 border-emerald-200 text-emerald-600" 
-                     : "bg-white border-gray-200 text-slate-700 hover:bg-gray-50 hover:border-gray-300"
-                )}
-              >
-                {copied ? (
-                  <>
-                    <Check size={14} />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  "Copy Link"
-                )}
-              </button>
-           </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 font-mono truncate">
+              https://teamnode.imsameera.com/{handle}/join
+            </div>
+            <button
+              onClick={handleCopy}
+              className={clsx(
+                "flex h-9 shrink-0 min-w-[100px] items-center justify-center gap-1.5 rounded-lg border transition-all duration-200 text-xs font-semibold px-3 active:scale-95",
+                copied
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                  : "bg-white border-gray-200 text-slate-700 hover:bg-gray-50 hover:border-gray-300",
+              )}
+            >
+              {copied ? (
+                <>
+                  <Check size={14} />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                "Copy Link"
+              )}
+            </button>
+          </div>
         </FieldRow>
       </Card>
 
@@ -1580,7 +1585,7 @@ function SettingsPageContent() {
         body: JSON.stringify({ ...current, handle }),
       });
       const needsRedirect = handle !== handleSaved;
-      
+
       const data: { settings?: ClubSettings; handle?: string } =
         await res.json();
       const next = { ...DEFAULT_SETTINGS, ...(data.settings ?? current) };

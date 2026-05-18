@@ -7,7 +7,7 @@ import { getInitials } from "@/lib/utils/nameUtils";
 // ---------------------------------------------------------------------------
 // Shared Types & Constants
 // ---------------------------------------------------------------------------
-export type Role = "Member" | "President" | "Vice President" | "Secretary" | "Treasurer";
+export type Role = "Member" | "President" | "Vice President" | "Secretary" | "Vice Secretary" | "Treasurer";
 
 export interface MonthlyContribution {
   month: string;
@@ -61,6 +61,7 @@ const ROLE_COLOR: Record<Role, { bg: string; text: string }> = {
   "President":      { bg: "#EDE9FE", text: "#6D28D9" },
   "Vice President": { bg: "#DBEAFE", text: "#1E40AF" },
   "Secretary":      { bg: "#D1FAE5", text: "#065F46" },
+  "Vice Secretary": { bg: "#FCE7F3", text: "#9D174D" },
   "Treasurer":      { bg: "#FEF3C7", text: "#92400E" },
   "Member":         { bg: "#F3F4F6", text: "#6B7280" },
 };
