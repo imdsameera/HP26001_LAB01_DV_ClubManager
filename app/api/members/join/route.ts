@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createPendingFromJoin } from "@/lib/services/memberService";
 import { fileToDataUrl } from "@/lib/utils/fileToDataUrl";
 import { joinFieldsFromFormData, validateJoinFields } from "@/lib/validators/member";
+import { listAdminUsers } from "@/lib/repositories/userRepository";
+import { getSettings } from "@/lib/services/settingsService";
+import { sendEmail } from "@/lib/utils/mailer";
+import { newApplicantNotification } from "@/emails";
 
 export async function POST(request: Request) {
   try {
@@ -82,6 +86,38 @@ export async function POST(request: Request) {
     }
 
     console.log(`[Join API] Successfully created pending member for club: ${resolvedClubId}`);
+
+    // Notify Admins asynchronously
+    try {
+      const [settings, admins] = await Promise.all([
+        getSettings(resolvedClubId),
+        listAdminUsers(resolvedClubId)
+      ]);
+      
+      const targetAdmins = admins.filter(a => a.role === "SUPER_ADMIN" || a.role === "ADMIN");
+      
+      if (targetAdmins.length > 0) {
+        const dashboardUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/${handle || 'demo'}`;
+        const template = newApplicantNotification({
+          applicantName: `${fields.firstName} ${fields.lastName}`.trim(),
+          applicantEmail: fields.email,
+          clubName: settings.clubName || "Teamnode Club",
+          dashboardUrl
+        });
+
+        Promise.allSettled(
+          targetAdmins.map(admin => sendEmail({ to: admin.email, ...template }))
+        ).then(results => {
+          const failed = results.filter(r => r.status === "rejected");
+          if (failed.length > 0) {
+            console.error(`[Join API] Failed to send ${failed.length} applicant notifications`);
+          }
+        });
+      }
+    } catch (notifyErr) {
+      console.error("[Join API] Failed to process applicant notifications:", notifyErr);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);
