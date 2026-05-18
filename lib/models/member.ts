@@ -43,9 +43,12 @@ export interface MemberDocument {
   updatedAt: Date;
 }
 
-export function buildDisplayName(doc: Pick<MemberDocument, "initials" | "firstName" | "lastName">): string {
-  const parts = [doc.initials.trim(), doc.firstName.trim(), doc.lastName.trim()].filter(Boolean);
-  return parts.join(" ").trim() || "Unknown";
+export function buildDisplayName(doc: Partial<MemberDocument> & { name?: string }): string {
+  if (doc.initials || doc.firstName || doc.lastName) {
+    const parts = [(doc.initials || "").trim(), (doc.firstName || "").trim(), (doc.lastName || "").trim()].filter(Boolean);
+    return parts.join(" ").trim() || "Unknown";
+  }
+  return doc.name || "Unknown";
 }
 
 export function formatPhoneLine(code: string, number: string): string {
